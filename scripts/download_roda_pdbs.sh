@@ -25,14 +25,17 @@ OUT_DIR=$1
 RODA_ALIGNMENT_DIR=$2
 
 if [[ -d $OUT_DIR ]]; then
-    echo "${OUT_DIR} already exists. Download failed..."
-    exit 1
+   echo "${OUT_DIR} already exists. Download failed..."
+   exit 1
 fi
 
 SERVER=snapshotrsync.rcsb.org                       # RCSB server name
 PORT=873                                           # port RCSB server is using
 
-rsync -rlpt -v -z --delete --port=$PORT $SERVER::20220103/pub/pdb/data/structures/divided/mmCIF/ $OUT_DIR 2>&1 > /dev/null
+# Modified by jonathanking on 11/22/22; connection timeout on rsync
+# Alternative DL location proposed in https://github.com/deepmind/alphafold/issues/40
+#rsync -rlpt -v -z --delete  $SERVER::20220103/pub/pdb/data/structures/divided/mmCIF/ $OUT_DIR 2>&1 > /dev/null
+rsync --recursive --links --perms --times --compress -v --info=progress2 --delete data.pdbj.org::ftp_data/structures/divided/mmCIF/ $OUT_DIR
 
 for f in $(find $OUT_DIR -mindepth 2 -type f); do
     mv $f $OUT_DIR

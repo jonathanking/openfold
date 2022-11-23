@@ -41,8 +41,9 @@ MMCIF_DIR="${ROOT_DIR}/mmcif_files"
 
 echo "Running rsync to fetch all mmCIF files (note that the rsync progress estimate might be inaccurate)..."
 mkdir --parents "${RAW_DIR}"
-rsync --recursive --links --perms --times --compress --info=progress2 --delete --port=33444 \
-  rsync.rcsb.org::ftp_data/structures/divided/mmCIF/ \
+echo "rsync"
+rsync --recursive --links --perms --times --compress --info=progress2 --verbose --delete --port=33444 \
+  rsync.wwpdb.org::ftp/data/structures/divided/mmCIF/ \
   "${RAW_DIR}"
 
 echo "Unzipping all mmCIF files..."
