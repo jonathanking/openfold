@@ -17,6 +17,7 @@ import logging
 import math
 import numpy as np
 import os
+from tqdm import tqdm
 
 from openfold.utils.script_utils import load_models_from_command_line, parse_fasta, run_model, prep_output, \
     update_timings, relax_protein
@@ -136,6 +137,23 @@ def list_files_with_extensions(dir, extensions):
     return [f for f in os.listdir(dir) if f.endswith(extensions)]
 
 
+def _custom_load_meta_fasta_file(fasta_path):
+    """Parse a fasta file into lists of protein names (tags) and sequences."""
+    protein_tags = []
+    protein_seqs = []
+    with open(fasta_path, "r") as f:
+        for line in tqdm(f):
+            if line.startswith(">"):
+                tags = [line[1:].strip()]
+                tag = tags[0]
+                protein_tags.append((tag, tags))
+            elif not line:
+                continue
+            else:
+                protein_seqs.append([line.strip()])
+    return protein_tags, protein_seqs
+
+
 def main(args):
     # Create the output directory
     os.makedirs(args.output_dir, exist_ok=True)
@@ -179,17 +197,22 @@ def main(args):
 
     tag_list = []
     seq_list = []
-    for fasta_file in list_files_with_extensions(args.fasta_dir, (".fasta", ".fa")):
-        # Gather input sequences
-        with open(os.path.join(args.fasta_dir, fasta_file), "r") as fp:
-            data = fp.read()
-    
-        tags, seqs = parse_fasta(data)
-        # assert len(tags) == len(set(tags)), "All FASTA tags must be unique"
-        tag = '-'.join(tags)
 
-        tag_list.append((tag, tags))
-        seq_list.append(seqs)
+    if args.use_meta_fasta_file is not None:
+        tag_list, seq_list = _custom_load_meta_fasta_file(args.use_meta_fasta_file)
+    else:
+        for fasta_file in tqdm(
+                list_files_with_extensions(args.fasta_dir, (".fasta", ".fa"))):
+            # Gather input sequences
+            with open(os.path.join(args.fasta_dir, fasta_file), "r") as fp:
+                data = fp.read()
+            # tags is a list of names/tags, seqs is a list of seqs
+            tags, seqs = parse_fasta(data)
+            # assert len(tags) == len(set(tags)), "All FASTA tags must be unique"
+            tag = '-'.join(tags)
+
+            tag_list.append((tag, tags))
+            seq_list.append(seqs)
 
     seq_sort_fn = lambda target: sum([len(s) for s in target[1]])
     sorted_targets = sorted(zip(tag_list, seq_list), key=seq_sort_fn)
@@ -282,7 +305,13 @@ def main(args):
             if not args.skip_relaxation:
                 # Relax the prediction.
                 logger.info(f"Running relaxation on {unrelaxed_output_path}...")
-                relax_protein(config, args.model_device, unrelaxed_protein, output_directory, output_name)
+                try:
+                    relax_protein(config, args.model_device, unrelaxed_protein,
+                                  output_directory, output_name)
+                except Exception as e:
+                    logger.info(
+                        f"Relaxation failed for {unrelaxed_output_path} with error {e}")
+
 
             if args.save_outputs:
                 output_dict_path = os.path.join(
@@ -303,6 +332,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "template_mmcif_dir", type=str,
     )
+    parser.add_argument(
+        "--use_meta_fasta_file", type=str, default=None,
+        help="""Instead of slowly loading each individual fasta file, load a 
+        single fasta file for inference containing all sequences.""")
     parser.add_argument(
         "--use_precomputed_alignments", type=str, default=None,
         help="""Path to alignment directory. If provided, alignment computation 
