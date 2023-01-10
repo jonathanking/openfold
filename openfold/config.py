@@ -49,10 +49,11 @@ def enforce_config_constraints(config):
 
 
 def model_config(
-    name, 
-    train=False, 
-    low_prec=False, 
-    long_sequence_inference=False
+    name,
+    train=False,
+    low_prec=False,
+    long_sequence_inference=False,
+    num_workers=8,
 ):
     c = copy.deepcopy(config)
     # TRAINING PRESETS
@@ -66,6 +67,13 @@ def model_config(
         c.data.train.max_msa_clusters = 512
         c.loss.violation.weight = 1.
         c.loss.experimentally_resolved.weight = 0.01
+    elif name == "finetuning_sidechainnet":
+        # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
+        # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
+        # so we revert to initial_training settings, but keep the finetuning loss weights
+        c.loss.violation.weight = 1.
+        c.loss.experimentally_resolved.weight = 0.01
+        c.data.data_module.data_loaders.num_workers = num_workers
     elif name == "finetuning_ptm":
         c.data.train.max_extra_msa = 5120
         c.data.train.crop_size = 384
@@ -610,6 +618,7 @@ config = mlc.ConfigDict(
                 "enabled": tm_enabled,
             },
             "eps": eps,
+            "openmm": {"use_openmm": False, "weight":1.0, "add_struct_metrics": False},
         },
         "ema": {"decay": 0.999},
     }

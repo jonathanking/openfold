@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import argparse
 import logging
 import os
@@ -27,8 +28,10 @@ from openfold.utils.callbacks import (
     EarlyStoppingVerbose,
 )
 from openfold.utils.exponential_moving_average import ExponentialMovingAverage
+from openfold.utils.import_weights import import_jax_weights_
 from openfold.utils.loss import AlphaFoldLoss, lddt_ca
 from openfold.utils.lr_schedulers import AlphaFoldLRScheduler
+from openfold.utils.script_utils import get_model_basename
 from openfold.utils.seed import seed_everything
 from openfold.utils.superimposition import superimpose
 from openfold.utils.tensor_utils import tensor_tree_map
@@ -43,6 +46,8 @@ from scripts.zero_to_fp32 import (
 )
 
 from openfold.utils.logger import PerformanceLoggingCallback
+
+import sidechainnet.examples.losses as scn_losses
 
 
 class OpenFoldWrapper(pl.LightningModule):
@@ -81,15 +86,11 @@ class OpenFoldWrapper(pl.LightningModule):
             other_metrics = self._compute_validation_metrics(
                 batch, 
                 outputs,
-                superimposition_metrics=(not train)
+                superimposition_metrics=True  # MOD-JK: Changed to compute gdtts on train
             )
 
-        for k,v in other_metrics.items():
-            self.log(
-                f"{phase}/{k}", 
-                v, 
-                on_step=False, on_epoch=True, logger=True
-            )
+        for k, v in other_metrics.items():
+            self.log(f"{phase}/{k}", v, on_step=True, on_epoch=True, logger=True)
 
     def training_step(self, batch, batch_idx):
         if(self.ema.device != batch["aatype"].device):
@@ -175,24 +176,120 @@ class OpenFoldWrapper(pl.LightningModule):
             gt_coords_masked_ca,
             mask=all_atom_mask_ca, # still required here to compute n
         )
-   
         metrics["drmsd_ca"] = drmsd_ca_score
-    
-        if(superimposition_metrics):
-            superimposed_pred, alignment_rmsd = superimpose(
-                gt_coords_masked_ca, pred_coords_masked_ca, all_atom_mask_ca,
-            )
-            gdt_ts_score = gdt_ts(
-                superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
-            )
-            gdt_ha_score = gdt_ha(
-                superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
-            )
 
-            metrics["alignment_rmsd"] = alignment_rmsd
-            metrics["gdt_ts"] = gdt_ts_score
-            metrics["gdt_ha"] = gdt_ha_score
-    
+        if (superimposition_metrics and self.config.loss.openmm.add_struct_metrics):
+            # Original code (alpha-code analysis)
+            superimposed_pred, alignment_rmsd = superimpose(
+                gt_coords_masked_ca,
+                pred_coords_masked_ca,
+                all_atom_mask_ca,
+            )
+            gdt_ts_score = gdt_ts(superimposed_pred, gt_coords_masked_ca,
+                                  all_atom_mask_ca)
+            gdt_ha_score = gdt_ha(superimposed_pred, gt_coords_masked_ca,
+                                  all_atom_mask_ca)
+            metrics["rmsd_ca"] = alignment_rmsd
+            metrics["gdtts_ca"] = gdt_ts_score
+            metrics["gdtha_ca"] = gdt_ha_score
+
+            # MOD-JK heavily added code, only supports batch size of one at the moment
+            assert gt_coords.shape[
+                0] == 1, "Structure metrics only supported for batchsize of 1."
+
+            # Create our superimposed and de-padded all-atom variables for analysis
+            flat_gt = gt_coords_masked.reshape(gt_coords.shape[0], -1, 3)
+            flat_pred = pred_coords_masked.reshape(pred_coords.shape[0], -1, 3)
+            flat_all_atom_mask = all_atom_mask.reshape(all_atom_mask.shape[0], -1)
+
+            flat_gt_unpadded = flat_gt[flat_all_atom_mask.bool()]
+            flat_pred_unpadded = flat_pred[flat_all_atom_mask.bool()]
+            flat_gt_unpadded_np = flat_gt_unpadded.cpu().numpy()
+            flat_pred_unpadded_np = flat_pred_unpadded.cpu().numpy()
+
+            # >>> All-atom RMSD
+            flat_superimposed_pred_aa, rmsd_all = superimpose(flat_gt, flat_pred,
+                                                              flat_all_atom_mask)
+            metrics["rmsd_aa"] = rmsd_all
+            flat_superimposed_pred_aa_unpadded_np = flat_superimposed_pred_aa[
+                flat_all_atom_mask.bool()].cpu().numpy()
+
+            # >>> Global Metrics (GDC_all, TM score)
+            gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
+                                           flat_superimposed_pred_aa_unpadded_np,
+                                           skip_alignment=True,
+                                           as_percent=False)
+            tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
+                                             flat_superimposed_pred_aa_unpadded_np,
+                                             skip_alignment=True)
+            tmscore_ca = scn_losses.tm_score(
+                gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+                superimposed_pred[all_atom_mask_ca.bool()].cpu().numpy(),
+                skip_alignment=True)
+
+            # >>> Local Metrics (DRMSD, LDDT, no alignment required)
+            # NOTE-JK: I don't think OpenFold supports all-atom lddt (requires measuring
+            # dists only between atoms in different residues). I use SCN's value instead.
+            drmsd_aa = scn_losses.drmsd(flat_gt_unpadded, flat_pred_unpadded)
+            lddt_aa = scn_losses.lddt_all(
+                flat_gt.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                flat_pred.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                atom_mask=all_atom_mask.reshape(-1).bool(),
+                residue_shape=gt_coords.shape[-1],
+                cutoff=15)
+            lddtquasi_aa = scn_losses.quasi_lddt_all(flat_gt_unpadded,
+                                                     flat_pred_unpadded,
+                                                     cutoff=15)
+
+            metrics["gdcall_aa"] = gdcall_aa
+            metrics["tmscore_aa"] = tmscore_aa
+            metrics["tmscore_ca"] = tmscore_ca
+            metrics["drmsd_aa"] = drmsd_aa
+            metrics["lddt_aa"] = lddt_aa
+            metrics["lddtquasi_aa"] = lddtquasi_aa
+
+            # The below measurements were used to compare sidechainnet's metrics vs OF's
+            # Because they all matched what OpenFold computes, they are not computed again
+            show_scn_metrics = False
+            if show_scn_metrics:
+                # 1. SCN only rmsd (does alignment)
+                alignment_rmsd_scn1 = scn_losses.rmsd(flat_gt_unpadded_np,
+                                                      flat_pred_unpadded_np)
+                # 2. SCN assisted rmsd (uses openfold's alignment)
+                alignment_rmsd_scn2 = scn_losses.rmsd(
+                    flat_gt_unpadded_np,
+                    flat_superimposed_pred_aa[flat_all_atom_mask.bool()].cpu().numpy())
+                # 3. SCN only rmsd_ca (does alignment)
+                alignment_rmsd_scn1_ca = scn_losses.rmsd(
+                    gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+                    pred_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy())
+                drmsd_ca_scn = scn_losses.drmsd(
+                    gt_coords_masked_ca[all_atom_mask_ca.bool()],
+                    pred_coords_masked_ca[all_atom_mask_ca.bool()])
+                lddt_ca_scn = scn_losses.quasi_lddt_all(
+                    gt_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
+                    pred_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
+                    cutoff=15)
+                metrics['rmsdscn1_aa'] = alignment_rmsd_scn1
+                metrics['rmsdscn2_aa'] = alignment_rmsd_scn2
+                metrics['rmsdscn1_ca'] = alignment_rmsd_scn1_ca
+                metrics["drmsd_ca_scn"] = drmsd_ca_scn
+                metrics["lddt_ca_scn"] = lddt_ca_scn
+
+            # The below are deprecated fn calls that compute the metrics via realignment
+            # but are skipped to avoid the overhead of realignment
+            # gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
+            #                                flat_pred_unpadded_np,
+            #                                skip_alignment=False,
+            #                                as_percent=False)
+            # tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
+            #                                  flat_pred_unpadded_np,
+            #                                  skip_alignment=False)
+            # tmscore_ca = scn_losses.tm_score(
+            #     gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+            #     pred_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+            #     skip_alignment=False)
+
         return metrics
 
     def configure_optimizers(self, 
@@ -247,14 +344,22 @@ def main(args):
         seed_everything(args.seed) 
 
     config = model_config(
-        args.config_preset, 
-        train=True, 
-        low_prec=(str(args.precision) == "16")
-    ) 
-    
+        args.config_preset,
+        train=True,
+        low_prec=(str(args.precision) == "16"),
+        num_workers=args.num_workers,
+    )
+
+    # MOD-JK: Whether to use OpenMM loss from sidechainnet
+    config.loss.openmm.use_openmm = args.use_openmm
+    config.loss.openmm.add_struct_metrics = args.add_struct_metrics
+
     model_module = OpenFoldWrapper(config)
-    if(args.resume_from_ckpt):
-        if(os.path.isdir(args.resume_from_ckpt)):  
+    if args.jax_param_path is not None:
+        model_module.model = load_jax_params_into_model(model_module.model,
+                                                        args.jax_param_path)
+    elif (args.resume_from_ckpt and not args.resume_model_weights_only):
+        if (os.path.isdir(args.resume_from_ckpt)):
             last_global_step = get_global_step_from_zero_checkpoint(args.resume_from_ckpt)
         else:
             sd = torch.load(args.resume_from_ckpt)
@@ -266,7 +371,9 @@ def main(args):
             sd = get_fp32_state_dict_from_zero_checkpoint(args.resume_from_ckpt)
         else:
             sd = torch.load(args.resume_from_ckpt)
-        sd = {k[len("module."):]:v for k,v in sd.items()}
+        # MOD-JK: there is no 'module.' prefix in the state dict; instead, it is missing the expected  `model.` prefix. This applies to initial_training and finetuning.pt files.
+        # sd = {k[len("module."):]:v for k,v in sd.items()}
+        sd = {"model." + k: v for k, v in sd.items()}
         model_module.load_state_dict(sd)
         logging.info("Successfully loaded model weights...")
  
@@ -373,6 +480,15 @@ def bool_type(bool_str: str):
         return True
     else:
         raise ValueError(f'Cannot interpret {bool_str} as bool')
+
+
+def load_jax_params_into_model(param_path, model):
+    """Load JAX params into a PyTorch model"""
+    model_basename = get_model_basename(param_path)
+    model_version = "_".join(model_basename.split("_")[1:])
+    import_jax_weights_(model, param_path, version=model_version)
+    logging.info(f"Successfully loaded JAX parameters at {path}...")
+    return model
 
 
 if __name__ == "__main__":
@@ -539,9 +655,27 @@ if __name__ == "__main__":
         help="Training alignment index. See the README for instructions."
     )
     parser.add_argument(
-        "--distillation_alignment_index_path", type=str, default=None,
-        help="Distillation alignment index. See the README for instructions."
-    )
+    parser.add_argument("--num_workers",
+                        type=int,
+                        default=8,
+                        help="Number of workers for data loading.")
+    parser.add_argument("--debug",
+                        action="store_true",
+                        default=False,
+                        help="Whether to print debug information from the logger.")
+    parser.add_argument("--jax_param_path",
+                        type=str,
+                        default=None,
+                        help="""Path to JAX model parameters.""")
+    parser.add_argument("--use_openmm",
+                        action="store_true",
+                        default=False,
+                        help="Whether to use OpenMM loss.")
+    parser.add_argument("--add_struct_metrics",
+                        action="store_true",
+                        default=False,
+                        help="Whether to add additional structure metrics to wandb"
+                        "including RMSD, GDC, DRMSD, LDDT, etc.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
@@ -572,5 +706,9 @@ if __name__ == "__main__":
 
     # This re-applies the training-time filters at the beginning of every epoch
     args.reload_dataloaders_every_n_epochs = 1
+
+    if args.debug:
+        # Set logging level to debug
+        logging.basicConfig(level=logging.DEBUG)
 
     main(args)

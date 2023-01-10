@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
+from functools import partial, reduce
 import logging
 import ml_collections
 import numpy as np
@@ -32,6 +32,8 @@ from openfold.utils.tensor_utils import (
     permute_final_dims,
     batched_gather,
 )
+
+from sidechainnet.research.openfold.openfold_loss import openmm_config, openmm_loss
 
 
 def softmax_cross_entropy(logits, labels):
@@ -56,9 +58,9 @@ def sigmoid_cross_entropy(logits, labels):
 
 
 def torsion_angle_loss(
-    a,  # [*, N, 7, 2]
-    a_gt,  # [*, N, 7, 2]
-    a_alt_gt,  # [*, N, 7, 2]
+        a,  # [*, N, 7, 2]
+        a_gt,  # [*, N, 7, 2]
+        a_alt_gt,  # [*, N, 7, 2]
 ):
     # [*, N, 7]
     norm = torch.norm(a, dim=-1)
@@ -69,7 +71,7 @@ def torsion_angle_loss(
     # [*, N, 7]
     diff_norm_gt = torch.norm(a - a_gt, dim=-1)
     diff_norm_alt_gt = torch.norm(a - a_alt_gt, dim=-1)
-    min_diff = torch.minimum(diff_norm_gt ** 2, diff_norm_alt_gt ** 2)
+    min_diff = torch.minimum(diff_norm_gt**2, diff_norm_alt_gt**2)
 
     # [*]
     l_torsion = torch.mean(min_diff, dim=(-1, -2))
@@ -1528,6 +1530,8 @@ class AlphaFoldLoss(nn.Module):
     def __init__(self, config):
         super(AlphaFoldLoss, self).__init__()
         self.config = config
+        # Update config file with weight for openmm_loss
+        self.config["openmm"]["weight"] = openmm_config["weight"]
 
     def forward(self, out, batch, _return_breakdown=False):
         if "violation" not in out.keys():
@@ -1577,6 +1581,13 @@ class AlphaFoldLoss(nn.Module):
                 out["violation"],
                 **batch,
             ),
+            # MOD-JK: Added openmm loss
+            "openmm":
+            lambda: openmm_loss(
+                model_output=out,
+                model_input=batch,
+                config=openmm_config,
+            ),
         }
 
         if(self.config.tm.enabled):
@@ -1587,10 +1598,17 @@ class AlphaFoldLoss(nn.Module):
 
         cum_loss = 0.
         losses = {}
+        scn_proteins_pred = []
+        scn_proteins_true = []
         for loss_name, loss_fn in loss_fns.items():
             weight = self.config[loss_name].weight
-            loss = loss_fn()
-            if(torch.isnan(loss) or torch.isinf(loss)):
+            if loss_name == "openmm" and self.config.openmm.use_openmm:
+                loss, scn_proteins_pred, scn_proteins_true = loss_fn()
+            elif loss_name == "openmm":
+                loss = torch.tensor(0.)
+            else:
+                loss = loss_fn()
+            if (torch.isnan(loss) or torch.isinf(loss)):
                 #for k,v in batch.items():
                 #    if(torch.any(torch.isnan(v)) or torch.any(torch.isinf(v))):
                 #        logging.warning(f"{k}: is nan")
@@ -1610,7 +1628,20 @@ class AlphaFoldLoss(nn.Module):
 
         losses["loss"] = cum_loss.detach().clone()
 
-        if(not _return_breakdown):
-            return cum_loss
+        # This section was removed because it did not correctly unpad the coord tensors
+        # unpadded_coords = [(true.get_unpadded_coords().cpu().numpy(), pred.get_unpadded_coords().cpu().detach().numpy())
+        #                    for true, pred in zip(scn_proteins_true, scn_proteins_pred)]
         
+        # def compute_loss_over_coords(loss_fn):
+        #     return sum((loss_fn(true, pred) for true, pred in unpadded_coords)) / max(len(unpadded_coords), 1)
+
+        # losses['gdcall_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.gdc_all(x, y, standardize=True))
+        # losses['tmscore_aa'] = compute_loss_over_coords(scn_losses.tm_score)
+        # losses['drmsd_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.drmsd(torch.tensor(x), torch.tensor(y)))
+        # losses['lddt_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.lddt_all(torch.tensor(x), torch.tensor(y)))
+
+
+        if (not _return_breakdown):
+            return cum_loss
+
         return cum_loss, losses
