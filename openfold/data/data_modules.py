@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pickle
+import shutil
 from typing import Optional, Sequence, List, Any
 
 import ml_collections as mlc
@@ -117,6 +118,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                 "scripts/generate_mmcif_cache.py before running OpenFold"
             )
 
+        # NOTE-JK: This is where the list of chids is added to the dataset from alndir
+        # NOTE-JK: As written, my alignment directory has
         if(alignment_index is not None):
             self._chain_ids = list(alignment_index.keys())
         else:
@@ -152,7 +155,14 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     len(missing),
                     missing_examples,
                     chain_data_cache_path)
-       
+                
+        # MOD-JK: Remove astral entries
+        # _start = len(self._chain_ids)
+        # self._chain_ids = [c for c in self._chain_ids if not len(c.split('_')) == 2]
+        # _end = len(self._chain_ids)
+        # if (_start - _end) > 0: 
+        #     logging.warning("Removing %d ASTRAL entries.", _start - _end)
+
         self._chain_id_to_idx_dict = {
             chain: i for i, chain in enumerate(self._chain_ids)
         }
@@ -217,6 +227,17 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             alignment_index = self.alignment_index[name]
 
         if(self.mode == 'train' or self.mode == 'eval'):
+            # MOD-JK: SidechainNet IDs have 3 parts; pdbid_model_chain, to delete
+            # file_id, chain_id, is_astral = get_pdbid_from_pnid(name, return_chain=True,
+            #     include_is_astral=True)
+            # file_id = file_id.lower()
+            # spl = name.rsplit('_', 1)
+            # if(len(spl) == 2):
+            #     file_id, chain_id = spl
+            #     model_id = None
+            # else:
+            #     file_id, = spl
+            #     chain_id = None
             spl = name.rsplit('_', 1)
             if(len(spl) == 2):
                 file_id, chain_id = spl
@@ -242,6 +263,16 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     raise ValueError("Invalid file type")
 
             path += ext
+            # MOD-JK: Check if the specified file exists at path; if it doesn't try to copy the right one; this should not be needed
+            # if(not os.path.exists(path)):
+            #     # Try to copy a file from another location
+            #     try:
+            #         path = os.path.join("/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", file_id + ext)
+            #         shutil.copyfile(path, os.path.join(self.data_dir, file_id + ext))
+            #         print("Copied file from: {}".format(path))
+            #     except Exception as e:
+            #         raise ValueError("File does not exist at path: {}".format(path))
+
             if(ext == ".cif"):
                 data = self._parse_mmcif(
                     path, file_id, chain_id, alignment_dir, alignment_index,
@@ -420,6 +451,9 @@ class OpenFoldDataset(torch.utils.data.Dataset):
             generator=self.generator,
         )
 
+        # MOD-JK: Unable to get sampling to work when chain cache is not provided; StopIteration, to delete
+        # idxs = np.random.choice(range(len(self.datasets[0])), size=self.epoch_len, replace=True)
+        # self.datapoints = [(0, i) for i in idxs]
         self.datapoints = []
         for dataset_idx in dataset_choices:
             samples = self._samples[dataset_idx]

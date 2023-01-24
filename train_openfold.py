@@ -465,12 +465,17 @@ def main(args):
         os.system(f"{sys.executable} -m pip freeze > {freeze_path}")
         wdb_logger.experiment.save(f"{freeze_path}")
 
+    # MOD-JK Add advanced profiling
+    # from pytorch_lightning.profiler import AdvancedProfiler
+    # profiler = AdvancedProfiler(dirpath=".", filename="perf_logs03")
+
     trainer = pl.Trainer.from_argparse_args(
         args,
         default_root_dir=args.output_dir,
         strategy=strategy,
         callbacks=callbacks,
         logger=loggers,
+        # profiler="simple",
     )
 
     if(args.resume_model_weights_only):
