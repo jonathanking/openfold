@@ -34,6 +34,7 @@ from openfold.utils.tensor_utils import (
 )
 
 from sidechainnet.research.openfold.openfold_loss import openmm_config, openmm_loss
+import wandb
 
 
 def softmax_cross_entropy(logits, labels):
@@ -1530,8 +1531,7 @@ class AlphaFoldLoss(nn.Module):
     def __init__(self, config):
         super(AlphaFoldLoss, self).__init__()
         self.config = config
-        # Update config file with weight for openmm_loss
-        self.config["openmm"]["weight"] = openmm_config["weight"]
+        self.struct_idx = 0
 
     def forward(self, out, batch, _return_breakdown=False):
         if "violation" not in out.keys():
@@ -1604,8 +1604,28 @@ class AlphaFoldLoss(nn.Module):
             weight = self.config[loss_name].weight
             if loss_name == "openmm" and self.config.openmm.use_openmm:
                 loss, scn_proteins_pred, scn_proteins_true = loss_fn()
+                losses["openmm_scaled"] = loss.detach().clone() * weight
+                if (
+                    self.config['openmm']['write_pdbs'] and 
+                    self.struct_idx % self.config['openmm']['write_pdbs_frequency'] == 0
+                    ):
+                    # Write out the predicted and true structures, padded left with 4 zeros
+                    # to make the filenames sort correctly
+                    true_fn = f"_true_{self.struct_idx:04d}.pdb"
+                    pred_fn = f"_pred_{self.struct_idx:04d}.pdb"
+                    if len(scn_proteins_true):
+                        scn_proteins_true[0].to_pdb(true_fn)
+                        scn_proteins_pred[0].to_pdb(pred_fn)
+                        self.struct_idx += 1
+                        wandb.log({"structures/train/true": wandb.Molecule(true_fn)})
+                        wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)})
+                        wandb.save(true_fn)
+                        wandb.save(pred_fn)
+                elif self.config['openmm']['write_pdbs']:
+                    self.struct_idx += 1
             elif loss_name == "openmm":
                 loss = torch.tensor(0.)
+                losses["openmm_scaled"] = loss.detach().clone() * weight
             else:
                 loss = loss_fn()
             if (torch.isnan(loss) or torch.isinf(loss)):

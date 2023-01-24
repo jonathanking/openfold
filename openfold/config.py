@@ -74,6 +74,8 @@ def model_config(
         c.loss.violation.weight = 1.
         c.loss.experimentally_resolved.weight = 0.01
         c.data.data_module.data_loaders.num_workers = num_workers
+        # c.model.heads.tm.enabled = True
+        # c.loss.tm.weight = 0.1
     elif name == "finetuning_ptm":
         c.data.train.max_extra_msa = 5120
         c.data.train.crop_size = 384
@@ -618,7 +620,14 @@ config = mlc.ConfigDict(
                 "enabled": tm_enabled,
             },
             "eps": eps,
-            "openmm": {"use_openmm": False, "weight":1.0, "add_struct_metrics": False},
+            "openmm": {
+                "use_openmm": False, 
+                "weight":1.0,
+                "add_struct_metrics": False,
+                "write_pdbs": False,
+                "write_pdbs_frequency": 10,
+                "pdb_dir": "./pdbs"
+            },
         },
         "ema": {"decay": 0.999},
     }

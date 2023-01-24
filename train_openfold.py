@@ -353,6 +353,16 @@ def main(args):
     # MOD-JK: Whether to use OpenMM loss from sidechainnet
     config.loss.openmm.use_openmm = args.use_openmm
     config.loss.openmm.add_struct_metrics = args.add_struct_metrics
+    config.loss.openmm.weight = args.openmm_weight
+    if args.openmm_activation == "sigmoid":
+        config.loss.openmm.activation = torch.nn.Sigmoid()
+    elif args.openmm_activation == "relu":
+        config.loss.openmm.activation = torch.nn.ReLU()
+    else:
+        config.loss.openmm.activation = None
+    config.loss.openmm.write_pdbs = args.write_pdbs
+    config.loss.openmm.pdb_dir = os.path.join(args.output_dir, "pdbs")
+    os.makedirs(config.loss.openmm.pdb_dir, exist_ok=True)
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -654,7 +664,6 @@ if __name__ == "__main__":
         "--alignment_index_path", type=str, default=None,
         help="Training alignment index. See the README for instructions."
     )
-    parser.add_argument(
     parser.add_argument("--num_workers",
                         type=int,
                         default=8,
@@ -671,11 +680,28 @@ if __name__ == "__main__":
                         action="store_true",
                         default=False,
                         help="Whether to use OpenMM loss.")
+    parser.add_argument("--openmm_weight",
+                        type=float,
+                        default=1.0,
+                        help="Weight applied to OpenMM loss.")
+    parser.add_argument("--openmm_activation",
+                        help="Activation function applied to OpenMM loss. Can be one of "
+                        "['sigmoid', 'relu', 'None']. Defaults to 'None'.",
+                        choices=["sigmoid", "relu", "None"],
+                        default="None")
     parser.add_argument("--add_struct_metrics",
                         action="store_true",
                         default=False,
                         help="Whether to add additional structure metrics to wandb"
                         "including RMSD, GDC, DRMSD, LDDT, etc.")
+    parser.add_argument("--write_pdbs",
+                        action="store_true",
+                        default=False,
+                        help="Whether to write pdbs of the predicted structures.")
+    parser.add_argument("--overfit_single_batch",
+                        action="store_true",
+                        default=False,
+                        help="Whether to overfit to the first batch of data.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
