@@ -40,6 +40,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         alignment_index: Optional[Any] = None,
         _output_raw: bool = False,
         _structure_index: Optional[Any] = None,
+        overfit_single_batch: bool = False,
     ):
         """
             Args:
@@ -81,6 +82,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     special distillation set preprocessing steps).
                 mode:
                     "train", "val", or "predict"
+                overfit_single_batch:
+                    Whether to overfit a single batch. Useful for debugging.
         """
         super(OpenFoldSingleDataset, self).__init__()
         self.data_dir = data_dir
@@ -98,6 +101,9 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         self.alignment_index = alignment_index
         self._output_raw = _output_raw
         self._structure_index = _structure_index
+
+        # MOD-JK: added this to allow for overfitting a single batch
+        self.overfit_single_batch = overfit_single_batch
 
         self.supported_exts = [".cif", ".core", ".pdb"]
 
@@ -199,6 +205,9 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         return self._chain_ids[idx]
 
     def __getitem__(self, idx):
+        # MOD-JK: Added to support overfitting in lieu of PyTorch Lightning's method, always returns same idx
+        if self.overfit_single_batch:
+            idx = 1
         name = self.idx_to_chain_id(idx)
         alignment_dir = os.path.join(self.alignment_dir, name)
 
@@ -403,6 +412,7 @@ class OpenFoldDataset(torch.utils.data.Dataset):
         return self.epoch_len
 
     def reroll(self):
+        # NOTE-JK: This selects the datasets to use
         dataset_choices = torch.multinomial(
             torch.tensor(self.probabilities),
             num_samples=self.epoch_len,
@@ -536,6 +546,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
         _distillation_structure_index_path: Optional[str] = None,
         alignment_index_path: Optional[str] = None,
         distillation_alignment_index_path: Optional[str] = None,
+        overfit_single_batch: bool = False,  # MOD-JK: added since PyLi overfit can't work with torch.Generators
         **kwargs
     ):
         super(OpenFoldDataModule, self).__init__()
@@ -564,6 +575,9 @@ class OpenFoldDataModule(pl.LightningDataModule):
         self.obsolete_pdbs_file_path = obsolete_pdbs_file_path
         self.batch_seed = batch_seed
         self.train_epoch_len = train_epoch_len
+
+        # MOD-JK: added since PyLi overfit can't work with torch.Generators
+        self.overfit_single_batch = overfit_single_batch
 
         if(self.train_data_dir is None and self.predict_data_dir is None):
             raise ValueError(
@@ -628,6 +642,8 @@ class OpenFoldDataModule(pl.LightningDataModule):
                 treat_pdb_as_distillation=False,
                 mode="train",
                 alignment_index=self.alignment_index,
+                # MOD-JK: added since PyLi overfit can't work with torch.Generators
+                overfit_single_batch=self.overfit_single_batch,
             )
 
             distillation_dataset = None
