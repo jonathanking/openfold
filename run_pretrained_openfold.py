@@ -223,9 +223,18 @@ def main(args):
         args.openfold_checkpoint_path,
         args.jax_param_path,
         args.output_dir)
+    skip_start = False
     for model, output_directory in model_generator:
         cur_tracing_interval = 0
-        for (tag, tags), seqs in sorted_targets:
+        for (tag, tags), seqs in tqdm(sorted_targets):
+            # MOD-JK: Skipping entries while predicting/debugging
+            # if "1SX1_1_A" not in tag and skip_start:
+            #     print("Skipping", tag)
+            #     continue
+            # elif "1SX1_1_A" in tag:
+            #     # Skips a bad entry
+            #     skip_start = False
+            #     pass
             output_name = f'{tag}_{args.config_preset}'
             if args.output_postfix is not None:
                 output_name = f'{output_name}_{args.output_postfix}'
