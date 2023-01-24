@@ -444,6 +444,8 @@ def main(args):
             project=args.wandb_project,
             **{"entity": args.wandb_entity}
         )
+        # MOD-JK: save config to wandb
+        wdb_logger.experiment.config.update(vars(args))
         loggers.append(wdb_logger)
 
     if(args.deepspeed_config_path is not None):
