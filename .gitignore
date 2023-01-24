@@ -1,0 +1,18 @@
+data/
+.vscode/settings.json
+*.pyc
+build/
+openfold/resources/*params
+openfold/resources/stereo_chemical_props.txt
+openfold.egg-info/
+dist/
+tests/test_data
+openfold/issues/5t5f.pdb
+openfold/issues/test_openfold.py
+
+# MOD-JK ignore local data files
+*.pdb
+*.json
+*.html
+*.txt
+
