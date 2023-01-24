@@ -406,7 +406,8 @@ def main(args):
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
-            save_top_k=-1,
+            save_top_k=2,
+            monitor="train/loss"
         )
         callbacks.append(mc)
 

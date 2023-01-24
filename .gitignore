@@ -15,4 +15,5 @@ openfold/issues/test_openfold.py
 *.json
 *.html
 *.txt
+*.code-workspace
 
