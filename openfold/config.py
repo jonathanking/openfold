@@ -625,8 +625,9 @@ config = mlc.ConfigDict(
                 "weight":1.0,
                 "add_struct_metrics": False,
                 "write_pdbs": False,
-                "write_pdbs_frequency": 10,
-                "pdb_dir": "./pdbs"
+                "write_pdbs_every_n_steps": 10,
+                "pdb_dir": "./pdbs",
+                "use_scn_pdb_names": False,
             },
         },
         "ema": {"decay": 0.999},

@@ -1607,7 +1607,7 @@ class AlphaFoldLoss(nn.Module):
                 losses["openmm_scaled"] = loss.detach().clone() * weight
                 if (
                     self.config['openmm']['write_pdbs'] and 
-                    self.struct_idx % self.config['openmm']['write_pdbs_frequency'] == 0
+                    self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0
                     ):
                     # Write out the predicted and true structures, padded left with 4 zeros
                     # to make the filenames sort correctly

@@ -361,8 +361,10 @@ def main(args):
     else:
         config.loss.openmm.activation = None
     config.loss.openmm.write_pdbs = args.write_pdbs
+    config.loss.openmm.write_pdbs_every_n_steps = args.write_pdbs_every_n_steps
     config.loss.openmm.pdb_dir = os.path.join(args.output_dir, "pdbs")
     os.makedirs(config.loss.openmm.pdb_dir, exist_ok=True)
+    config.loss.openmm.use_scn_pdb_names = args.use_scn_pdb_names
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -442,6 +444,7 @@ def main(args):
             save_dir=args.output_dir,
             id=args.wandb_id,
             project=args.wandb_project,
+            notes=args.wandb_notes,
             **{"entity": args.wandb_entity}
         )
         # MOD-JK: save config to wandb
@@ -706,10 +709,26 @@ if __name__ == "__main__":
                         action="store_true",
                         default=False,
                         help="Whether to write pdbs of the predicted structures.")
+    parser.add_argument("--write_pdbs_every_n_steps",
+                        type=int,
+                        default=10,
+                        help="Frequency with which to write pdbs of the predicted "
+                        "structures.")
     parser.add_argument("--overfit_single_batch",
                         action="store_true",
                         default=False,
                         help="Whether to overfit to the first batch of data.")
+    parser.add_argument("--use_scn_pdb_names",
+                        "-scnpdb",
+                        action="store_true",
+                        default=False,
+                        help="Whether to use SidechainNet names for PDB input directory ("
+                        "train_data_dir), e.g. 1A9U_1_A.pdb instead of 1a9u.{pdb,mmcif}.")
+    parser.add_argument("--wandb_notes", 
+                        "-wn",
+                        type=str,
+                        default=None,
+                        help="Notes to add to wandb run.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass

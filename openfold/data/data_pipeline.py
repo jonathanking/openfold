@@ -712,6 +712,8 @@ class DataPipeline:
     ) -> FeatureDict:
         """
             Assembles features for a protein in a PDB file.
+            
+            # NOTE-JK: This is the primary featurizer for training with sidechainnet.
         """
         if(_structure_index is not None):
             db_dir = os.path.dirname(pdb_path)

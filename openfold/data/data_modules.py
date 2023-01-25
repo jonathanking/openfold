@@ -1,5 +1,6 @@
 import copy
 from functools import partial
+import glob
 import json
 import logging
 import os
@@ -42,6 +43,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         _output_raw: bool = False,
         _structure_index: Optional[Any] = None,
         overfit_single_batch: bool = False,
+        use_scn_pdb_names: bool = False,
     ):
         """
             Args:
@@ -85,6 +87,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     "train", "val", or "predict"
                 overfit_single_batch:
                     Whether to overfit a single batch. Useful for debugging.
+                use_scn_pdb_names:
+                    Whether to use the ProteinNet-style filenames in the data_dir.
         """
         super(OpenFoldSingleDataset, self).__init__()
         self.data_dir = data_dir
@@ -105,6 +109,10 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
 
         # MOD-JK: added this to allow for overfitting a single batch
         self.overfit_single_batch = overfit_single_batch
+
+        # MOD-JK: added to allow for data_dir with filenames with pnids
+        self._scn_path_index = {}
+        self.use_scn_pdb_names = use_scn_pdb_names
 
         self.supported_exts = [".cif", ".core", ".pdb"]
 
@@ -218,7 +226,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         # MOD-JK: Added to support overfitting in lieu of PyTorch Lightning's method, always returns same idx
         if self.overfit_single_batch:
             idx = 1
-        name = self.idx_to_chain_id(idx)
+        name = self.idx_to_chain_id(idx)  # NOTE-JK: this is according to the names found in the alignment_dir
         alignment_dir = os.path.join(self.alignment_dir, name)
 
         alignment_index = None
@@ -227,55 +235,55 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             alignment_index = self.alignment_index[name]
 
         if(self.mode == 'train' or self.mode == 'eval'):
-            # MOD-JK: SidechainNet IDs have 3 parts; pdbid_model_chain, to delete
-            # file_id, chain_id, is_astral = get_pdbid_from_pnid(name, return_chain=True,
-            #     include_is_astral=True)
-            # file_id = file_id.lower()
-            # spl = name.rsplit('_', 1)
-            # if(len(spl) == 2):
-            #     file_id, chain_id = spl
-            #     model_id = None
-            # else:
-            #     file_id, = spl
-            #     chain_id = None
             spl = name.rsplit('_', 1)
             if(len(spl) == 2):
-                file_id, chain_id = spl
+                rcsb_4letterID, chain_id = spl
             else:
-                file_id, = spl
+                rcsb_4letterID, = spl
                 chain_id = None
+            
+            # MOD-JK: Added to support SCN PDBs; find path in dir with names like 1A9U_1_A.pdb
+            ext = None
+            if self.use_scn_pdb_names and name in self._scn_path_index:
+                path = self._scn_path_index[name]
+                ext = os.path.splitext(path)[1]
+            elif self.use_scn_pdb_names:
+                path_pattern = os.path.join(self.data_dir, f"*{rcsb_4letterID.upper()}_*_{chain_id.upper()}.pdb")
+                path = glob.glob(path_pattern)[0]
+                ext = os.path.splitext(path)[1]
+                self._scn_path_index[name] = path
+            else:  # Default behaviour before modification
+                path = os.path.join(self.data_dir, rcsb_4letterID)
+                # Finish finding ext
+                structure_index_entry = None
+                if(self._structure_index is not None):
+                    structure_index_entry = self._structure_index[name]
+                    assert(len(structure_index_entry["files"]) == 1)
+                    filename, _, _ = structure_index_entry["files"][0]
+                    ext = os.path.splitext(filename)[1]
+                elif ext is None:
+                    for e in self.supported_exts:
+                        if(os.path.exists(path + e)):
+                            ext = e
+                            break
 
-            path = os.path.join(self.data_dir, file_id)
-            structure_index_entry = None
-            if(self._structure_index is not None):
-                structure_index_entry = self._structure_index[name]
-                assert(len(structure_index_entry["files"]) == 1)
-                filename, _, _ = structure_index_entry["files"][0]
-                ext = os.path.splitext(filename)[1]
-            else:
-                ext = None
-                for e in self.supported_exts:
-                    if(os.path.exists(path + e)):
-                        ext = e
-                        break
+                    if(ext is None):
+                        raise ValueError("Invalid file type")
+                path += ext
 
-                if(ext is None):
-                    raise ValueError("Invalid file type")
-
-            path += ext
             # MOD-JK: Check if the specified file exists at path; if it doesn't try to copy the right one; this should not be needed
             # if(not os.path.exists(path)):
             #     # Try to copy a file from another location
             #     try:
-            #         path = os.path.join("/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", file_id + ext)
-            #         shutil.copyfile(path, os.path.join(self.data_dir, file_id + ext))
+            #         path = os.path.join("/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", rcsb_4letterID + ext)
+            #         shutil.copyfile(path, os.path.join(self.data_dir, rcsb_4letterID + ext))
             #         print("Copied file from: {}".format(path))
             #     except Exception as e:
             #         raise ValueError("File does not exist at path: {}".format(path))
 
             if(ext == ".cif"):
                 data = self._parse_mmcif(
-                    path, file_id, chain_id, alignment_dir, alignment_index,
+                    path, rcsb_4letterID, chain_id, alignment_dir, alignment_index,
                 )
             elif(ext == ".core"):
                 data = self.data_pipeline.process_core(
@@ -289,7 +297,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     pdb_path=path,
                     alignment_dir=alignment_dir,
                     is_distillation=self.treat_pdb_as_distillation,
-                    chain_id=chain_id,
+                    # MOD-JK: SCN PDBs always contain a single chain. This allows us to ignore the chain_id in the file, sometimes they differ (1F93_2_B)
+                    chain_id=chain_id if not self.use_scn_pdb_names else None,  
                     alignment_index=alignment_index,
                     _structure_index=structure_index,
                 )
@@ -581,6 +590,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
         alignment_index_path: Optional[str] = None,
         distillation_alignment_index_path: Optional[str] = None,
         overfit_single_batch: bool = False,  # MOD-JK: added since PyLi overfit can't work with torch.Generators
+        use_scn_pdb_names: bool = False,  # MOD-JK
         **kwargs
     ):
         super(OpenFoldDataModule, self).__init__()
@@ -612,6 +622,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
 
         # MOD-JK: added since PyLi overfit can't work with torch.Generators
         self.overfit_single_batch = overfit_single_batch
+        self.use_scn_pdb_names = use_scn_pdb_names
 
         if(self.train_data_dir is None and self.predict_data_dir is None):
             raise ValueError(
@@ -678,6 +689,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
                 alignment_index=self.alignment_index,
                 # MOD-JK: added since PyLi overfit can't work with torch.Generators
                 overfit_single_batch=self.overfit_single_batch,
+                use_scn_pdb_names=self.use_scn_pdb_names,
             )
 
             distillation_dataset = None
