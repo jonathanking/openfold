@@ -65,17 +65,17 @@ def atom14_to_atom37(atom14, batch):
     return atom37_data
 
 # MOD-JK: added to convert model output to atom14, delete
-# def atom37_to_atom14(atom37, batch, no_batch_dims=0):
-#     atom14_data = batched_gather(
-#         atom37,
-#         batch["residx_atom14_to_atom37"],
-#         dim=-2,
-#         no_batch_dims=no_batch_dims,
-#     )
+def atom37_to_atom14(atom37, batch, no_batch_dims=0):
+    atom14_data = batched_gather(
+        atom37,
+        batch["residx_atom14_to_atom37"],
+        dim=-2,
+        no_batch_dims=no_batch_dims,
+    )
 
-#     atom14_data = atom14_data * batch["atom14_atom_exists"][..., None]
+    atom14_data = atom14_data * batch["atom14_atom_exists"][..., None]
 
-#     return atom14_data
+    return atom14_data
 
 
 def build_template_angle_feat(template_feats):

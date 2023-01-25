@@ -132,6 +132,9 @@ def from_pdb_string(pdb_str: str, chain_id: Optional[str] = None) -> Protein:
             residue_index.append(res.id[1])
             chain_ids.append(chain.id)
             b_factors.append(res_b_factors)
+    
+    # MOD-JK: Assert that the protein sequence was parsed correctly
+    assert len(aatype), "No residues were parsed from the PDB file."
 
     parents = None
     parents_chain_index = None

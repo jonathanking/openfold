@@ -15,6 +15,7 @@
 
 from functools import partial, reduce
 import logging
+import os
 import ml_collections
 import numpy as np
 import torch
@@ -33,7 +34,7 @@ from openfold.utils.tensor_utils import (
     batched_gather,
 )
 
-from sidechainnet.research.openfold.openfold_loss import openmm_config, openmm_loss
+from sidechainnet.research.openfold.openfold_loss import openmm_loss
 import wandb
 
 
@@ -1586,7 +1587,6 @@ class AlphaFoldLoss(nn.Module):
             lambda: openmm_loss(
                 model_output=out,
                 model_input=batch,
-                config=openmm_config,
             ),
         }
 
@@ -1609,11 +1609,15 @@ class AlphaFoldLoss(nn.Module):
                     self.config['openmm']['write_pdbs'] and 
                     self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0
                     ):
-                    # Write out the predicted and true structures, padded left with 4 zeros
-                    # to make the filenames sort correctly
-                    true_fn = f"_true_{self.struct_idx:04d}.pdb"
-                    pred_fn = f"_pred_{self.struct_idx:04d}.pdb"
                     if len(scn_proteins_true):
+                        # Write out the predicted and true structures, padded left with 4 zeros
+                        # to make the filenames sort correctly
+                        true_fn = os.path.join(
+                            self.config.openmm.pdb_dir,
+                            f"_true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                        pred_fn = os.path.join(
+                            self.config.openmm.pdb_dir,
+                            f"_pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
                         scn_proteins_true[0].to_pdb(true_fn)
                         scn_proteins_pred[0].to_pdb(pred_fn)
                         self.struct_idx += 1

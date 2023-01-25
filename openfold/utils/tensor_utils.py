@@ -104,7 +104,7 @@ def dict_map(fn, dic, leaf_type):
     return new_dict
 
 
-def tree_map(fn, tree, leaf_type):
+def tree_map(fn, tree, leaf_type, ignore_string_leaves=True):
     if isinstance(tree, dict):
         return dict_map(fn, tree, leaf_type)
     elif isinstance(tree, list):
@@ -113,9 +113,12 @@ def tree_map(fn, tree, leaf_type):
         return tuple([tree_map(fn, x, leaf_type) for x in tree])
     elif isinstance(tree, leaf_type):
         return fn(tree)
+    elif isinstance(tree, str) and ignore_string_leaves:
+        return tree
     else:
         print(type(tree))
         raise ValueError("Not supported")
 
 
-tensor_tree_map = partial(tree_map, leaf_type=torch.Tensor)
+# MOD-JK: Allow use of tree_map on dicts containing List[str], e.g. names of proteins
+tensor_tree_map = partial(tree_map, leaf_type=torch.Tensor, ignore_string_leaves=True)

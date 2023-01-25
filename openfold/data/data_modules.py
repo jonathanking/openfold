@@ -324,6 +324,9 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             dtype=torch.int64,
             device=feats["aatype"].device)
 
+        # MOD-JK: Add protein name to features, must be removed before collating b/c str
+        feats["name"] = name
+
         return feats
 
     def __len__(self):
@@ -472,8 +475,12 @@ class OpenFoldDataset(torch.utils.data.Dataset):
 
 class OpenFoldBatchCollator:
     def __call__(self, prots):
+        # MOD-JK: Support protein names (strings) in the feature dict
         stack_fn = partial(torch.stack, dim=0)
-        return dict_multimap(stack_fn, prots) 
+        names = [p.pop("name") for p in prots]
+        tensor_features_dict = dict_multimap(stack_fn, prots)
+        tensor_features_dict["name"] = names
+        return tensor_features_dict
 
 
 class OpenFoldDataLoader(torch.utils.data.DataLoader):
@@ -519,6 +526,9 @@ class OpenFoldDataLoader(torch.utils.data.DataLoader):
         )
 
     def _add_batch_properties(self, batch):
+        # MOD-JK: pop name info from batch b/c it's not a tensor
+        names = batch.pop("name")
+
         samples = torch.multinomial(
             self.prop_probs_tensor,
             num_samples=1, # 1 per row
@@ -551,6 +561,9 @@ class OpenFoldDataLoader(torch.utils.data.DataLoader):
         
         resample_recycling = lambda t: t[..., :no_recycling + 1]
         batch = tensor_tree_map(resample_recycling, batch)
+
+        # MOD-JK: Add name info back to batch
+        batch["name"] = names
 
         return batch
 
