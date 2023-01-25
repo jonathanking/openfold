@@ -688,7 +688,7 @@ if __name__ == "__main__":
                         default=None,
                         help="""Path to JAX model parameters.""")
     parser.add_argument("--use_openmm",
-                        action="store_true",
+                        type=bool_type,
                         default=False,
                         help="Whether to use OpenMM loss.")
     parser.add_argument("--openmm_weight",
@@ -729,6 +729,14 @@ if __name__ == "__main__":
                         type=str,
                         default=None,
                         help="Notes to add to wandb run.")
+    parser.add_argument("--scale_by_length",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to scale the loss by the length of the sequence.")
+    parser.add_argument("--force_clipping_val",
+                        type=float,
+                        default=1e6,
+                        help="Value for clipping OpenMM force gradients.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass

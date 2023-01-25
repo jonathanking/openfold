@@ -628,6 +628,8 @@ config = mlc.ConfigDict(
                 "write_pdbs_every_n_steps": 10,
                 "pdb_dir": "./pdbs",
                 "use_scn_pdb_names": False,
+                "scale_by_length": False,
+                "force_clipping_val": 1e6
             },
         },
         "ema": {"decay": 0.999},

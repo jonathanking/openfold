@@ -1587,6 +1587,9 @@ class AlphaFoldLoss(nn.Module):
             lambda: openmm_loss(
                 model_output=out,
                 model_input=batch,
+                force_scaling=None,
+                force_clipping_val=self.config.openmm["force_clipping_val"],
+                scale_by_length=self.config.openmm["scale_by_length"],
             ),
         }
 
