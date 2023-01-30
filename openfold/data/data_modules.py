@@ -249,7 +249,15 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                 ext = os.path.splitext(path)[1]
             elif self.use_scn_pdb_names:
                 path_pattern = os.path.join(self.data_dir, f"*{rcsb_4letterID.upper()}_*_{chain_id.upper()}.pdb")
-                path = glob.glob(path_pattern)[0]
+                try:
+                    path = glob.glob(path_pattern)[0]
+                except IndexError:
+                    # The file name may be in ASTRAL format
+                    try:
+                        path_pattern = os.path.join(self.data_dir, f"{rcsb_4letterID.upper()}_{chain_id.lower()}.pdb")
+                        path = glob.glob(os.path.join(self.data_dir, path_pattern))[0]
+                    except IndexError:
+                        raise ValueError(f"Could not find PDB file for {name} in {self.data_dir}")
                 ext = os.path.splitext(path)[1]
                 self._scn_path_index[name] = path
             else:  # Default behaviour before modification

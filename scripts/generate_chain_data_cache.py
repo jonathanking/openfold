@@ -47,6 +47,10 @@ def parse_file(
     elif(ext == ".pdb"):
         with open(os.path.join(args.data_dir, f), "r") as fp:
             pdb_string = fp.read()
+        
+        if not pdb_string:
+            logging.info(f"Could not parse {f}. Skipping...")
+            return {}
           
         protein_object = protein.from_pdb_string(pdb_string, None)
 
@@ -54,20 +58,35 @@ def parse_file(
         chain_dict["seq"] = residue_constants.aatype_to_str_sequence(
             protein_object.aatype,
         )
-        chain_dict["resolution"] = 0.
+        # MOD-JK: I've changed the default resolution to be 1.0, since many functions seem to ignore chains with resolution 0.0
+        chain_dict["resolution"] = 1.0
         
         if(chain_cluster_size_dict is not None):
             cluster_size = chain_cluster_size_dict.get(
                 full_name.upper(), -1
             )
             chain_dict["cluster_size"] = cluster_size
-
+        # MOD-JK: The alignment directory uses lower case names, so we make sure to record lower case names here
+        # MOD-JK: We also change the file_id to ignore model names, since the alignment directory does not include model names
+        # MOD-JK: We also do not support training with validation or test pnids (containing #)
+        if "#" in file_id:
+            return {}
+        file_id = file_id.split("_")
+        if len(file_id) == 3:
+            file_id = file_id[0].lower() + "_" + file_id[2].upper()
+        elif len(file_id) == 2:
+            file_id = file_id[0].lower() + "_" + file_id[1].lower()
+        else:
+            file_id = "_".join(file_id)
+            print("Unable to parse file_id: ", file_id)
+            return {}
         out = {file_id: chain_dict}
 
     return out
 
 
 def main(args):
+    logging.warning("Setting resolution of PDB files to 1.0 to participate in loss functions.")
     chain_cluster_size_dict = None
     if(args.cluster_file is not None):
         chain_cluster_size_dict = {}
@@ -91,7 +110,7 @@ def main(args):
     )
     data = {}
     with Pool(processes=args.no_workers) as p:
-        with tqdm(total=len(files)) as pbar:
+        with tqdm(total=len(files), smoothing=0) as pbar:
             for d in p.imap_unordered(fn, files, chunksize=args.chunksize):
                 data.update(d)
                 pbar.update()

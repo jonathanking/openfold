@@ -1617,17 +1617,18 @@ class AlphaFoldLoss(nn.Module):
                         # to make the filenames sort correctly
                         true_fn = os.path.join(
                             self.config.openmm.pdb_dir,
-                            f"_true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                            f"true/true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
                         pred_fn = os.path.join(
                             self.config.openmm.pdb_dir,
-                            f"_pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                            f"pred/pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
                         scn_proteins_true[0].to_pdb(true_fn)
                         scn_proteins_pred[0].to_pdb(pred_fn)
                         self.struct_idx += 1
-                        wandb.log({"structures/train/true": wandb.Molecule(true_fn)})
-                        wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)})
-                        wandb.save(true_fn)
-                        wandb.save(pred_fn)
+                        wandb.log({"structures/train/true": wandb.Molecule(true_fn)}, commit=False)
+                        wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)}, commit=False)
+                        base_path = os.path.split(self.config.openmm.pdb_dir)[0]
+                        wandb.save(true_fn, base_path=base_path)
+                        wandb.save(pred_fn, base_path=base_path)
                 elif self.config['openmm']['write_pdbs']:
                     self.struct_idx += 1
             elif loss_name == "openmm":

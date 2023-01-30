@@ -42,7 +42,7 @@ def main(args):
     fn = partial(parse_file, args=args)
     data = {}
     with Pool(processes=args.no_workers) as p:
-        with tqdm(total=len(files)) as pbar:
+        with tqdm(total=len(files), smoothing=0) as pbar:
             for d in p.imap_unordered(fn, files, chunksize=args.chunksize):
                 data.update(d)
                 pbar.update()

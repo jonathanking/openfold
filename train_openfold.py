@@ -48,6 +48,7 @@ from scripts.zero_to_fp32 import (
 from openfold.utils.logger import PerformanceLoggingCallback
 
 import sidechainnet.examples.losses as scn_losses
+import wandb
 
 
 class OpenFoldWrapper(pl.LightningModule):
@@ -62,6 +63,9 @@ class OpenFoldWrapper(pl.LightningModule):
         
         self.cached_weights = None
         self.last_lr_step = -1
+        
+        # MOD-JK: used to track runtime performance
+        self._durations = []
 
     def forward(self, batch):
         return self.model(batch)
@@ -93,6 +97,9 @@ class OpenFoldWrapper(pl.LightningModule):
             self.log(f"{phase}/{k}", v, on_step=True, on_epoch=True, logger=True)
 
     def training_step(self, batch, batch_idx):
+        # MOD-JK: Start recording the time this function takes
+        _start_time = time.time()
+
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
 
@@ -109,6 +116,13 @@ class OpenFoldWrapper(pl.LightningModule):
 
         # Log it
         self._log(loss_breakdown, batch, outputs)
+
+        # Measure the end time and report how long this function took
+        _end_time = time.time()
+        duration = _end_time - _start_time
+        self._durations.append(duration)
+        self.log("train/step_time", duration, on_step=True, on_epoch=False, logger=True)
+
 
         return loss
 
@@ -141,6 +155,17 @@ class OpenFoldWrapper(pl.LightningModule):
         # Restore the model weights to normal
         self.model.load_state_dict(self.cached_weights)
         self.cached_weights = None
+    
+    def on_fit_start(self):
+        self._fit_start_time = time.time()
+
+    def on_fit_end(self):
+        self._fit_end_time = time.time()
+        # MOD-JK: At the end of training, log the average time per step
+        avg_duration = np.mean(self._durations)
+        total_duration = self._fit_end_time - self._fit_start_time
+        wandb.run.summary["avg_step_time"] = avg_duration
+        wandb.run.summary["total_fit_time"] = self._fit_end_time - self._fit_start_time
 
     def _compute_validation_metrics(self, 
         batch, 
@@ -363,8 +388,21 @@ def main(args):
     config.loss.openmm.write_pdbs = args.write_pdbs
     config.loss.openmm.write_pdbs_every_n_steps = args.write_pdbs_every_n_steps
     config.loss.openmm.pdb_dir = os.path.join(args.output_dir, "pdbs")
-    os.makedirs(config.loss.openmm.pdb_dir, exist_ok=True)
+    for _subdir in ["true", "pred"]:
+        os.makedirs(os.path.join(config.loss.openmm.pdb_dir, _subdir), exist_ok=True)
     config.loss.openmm.use_scn_pdb_names = args.use_scn_pdb_names
+
+    # MOD-JK: Overwrite the config with the args
+    if args.use_lma and args.use_flash_attn:
+        raise ValueError("Cannot use both LMA and FlashAttention")
+    if args.use_lma:
+        config.globals.use_lma = True
+        config.globals.use_flash = False
+    if args.use_flash_attn:
+        config.globals.use_lma = False
+        config.globals.use_flash = True
+    if args.clear_cache_between_blocks:
+        config.model.extra_msa.extra_msa_stack.clear_cache_between_blocks = True
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -737,6 +775,18 @@ if __name__ == "__main__":
                         type=float,
                         default=1e6,
                         help="Value for clipping OpenMM force gradients.")
+    parser.add_argument("--use_lma", 
+                        type=bool_type,
+                        default=False,
+                        help="Whether to use low memory attention (mutually exclusive with flash attn).")
+    parser.add_argument("--use_flash_attn", 
+                        type=bool_type,
+                        default=False,
+                        help="Whether to use flash attention (mutually exclusive with LMA).")
+    parser.add_argument("--clear_cache_between_blocks",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to clear the cache between blocks in extra_msa_stack")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass

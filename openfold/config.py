@@ -622,7 +622,7 @@ config = mlc.ConfigDict(
             "eps": eps,
             "openmm": {
                 "use_openmm": False, 
-                "weight":1.0,
+                "weight": 1.0,
                 "add_struct_metrics": False,
                 "write_pdbs": False,
                 "write_pdbs_every_n_steps": 10,
