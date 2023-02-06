@@ -1590,6 +1590,10 @@ class AlphaFoldLoss(nn.Module):
                 force_scaling=None,
                 force_clipping_val=self.config.openmm["force_clipping_val"],
                 scale_by_length=self.config.openmm["scale_by_length"],
+                squash=self.config.openmm["squashed_loss"],
+                squash_factor=self.config.openmm["squashed_loss_factor"],  
+                modified_sigmoid=self.config.openmm["modified_sigmoid"],
+                modified_sigmoid_params=self.config.openmm["modified_sigmoid_params"],              
             ),
         }
 
@@ -1601,46 +1605,18 @@ class AlphaFoldLoss(nn.Module):
 
         cum_loss = 0.
         losses = {}
-        scn_proteins_pred = []
-        scn_proteins_true = []
         for loss_name, loss_fn in loss_fns.items():
             weight = self.config[loss_name].weight
-            if loss_name == "openmm" and self.config.openmm.use_openmm:
-                loss, scn_proteins_pred, scn_proteins_true = loss_fn()
+            if loss_name == "openmm":
+                loss = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                 losses["openmm_scaled"] = loss.detach().clone() * weight
-                if (
-                    self.config['openmm']['write_pdbs'] and 
-                    self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0
-                    ):
-                    if len(scn_proteins_true):
-                        # Write out the predicted and true structures, padded left with 4 zeros
-                        # to make the filenames sort correctly
-                        true_fn = os.path.join(
-                            self.config.openmm.pdb_dir,
-                            f"true/true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
-                        pred_fn = os.path.join(
-                            self.config.openmm.pdb_dir,
-                            f"pred/pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
-                        scn_proteins_true[0].to_pdb(true_fn)
-                        scn_proteins_pred[0].to_pdb(pred_fn)
-                        self.struct_idx += 1
-                        wandb.log({"structures/train/true": wandb.Molecule(true_fn)}, commit=False)
-                        wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)}, commit=False)
-                        base_path = os.path.split(self.config.openmm.pdb_dir)[0]
-                        wandb.save(true_fn, base_path=base_path)
-                        wandb.save(pred_fn, base_path=base_path)
-                elif self.config['openmm']['write_pdbs']:
-                    self.struct_idx += 1
-            elif loss_name == "openmm":
-                loss = torch.tensor(0.)
+                # Overwrite loss if we're not using openmm
+                if not self.config.openmm.use_openmm:
+                    loss = torch.tensor(0.)
                 losses["openmm_scaled"] = loss.detach().clone() * weight
             else:
                 loss = loss_fn()
             if (torch.isnan(loss) or torch.isinf(loss)):
-                #for k,v in batch.items():
-                #    if(torch.any(torch.isnan(v)) or torch.any(torch.isinf(v))):
-                #        logging.warning(f"{k}: is nan")
-                #logging.warning(f"{loss_name}: {loss}")
                 logging.warning(f"{loss_name} loss is NaN. Skipping...")
                 loss = loss.new_tensor(0., requires_grad=True)
             cum_loss = cum_loss + weight * loss
@@ -1656,20 +1632,44 @@ class AlphaFoldLoss(nn.Module):
 
         losses["loss"] = cum_loss.detach().clone()
 
-        # This section was removed because it did not correctly unpad the coord tensors
-        # unpadded_coords = [(true.get_unpadded_coords().cpu().numpy(), pred.get_unpadded_coords().cpu().detach().numpy())
-        #                    for true, pred in zip(scn_proteins_true, scn_proteins_pred)]
-        
-        # def compute_loss_over_coords(loss_fn):
-        #     return sum((loss_fn(true, pred) for true, pred in unpadded_coords)) / max(len(unpadded_coords), 1)
-
-        # losses['gdcall_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.gdc_all(x, y, standardize=True))
-        # losses['tmscore_aa'] = compute_loss_over_coords(scn_losses.tm_score)
-        # losses['drmsd_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.drmsd(torch.tensor(x), torch.tensor(y)))
-        # losses['lddt_aa'] = compute_loss_over_coords(lambda x, y: scn_losses.lddt_all(torch.tensor(x), torch.tensor(y)))
-
-
         if (not _return_breakdown):
             return cum_loss
 
         return cum_loss, losses
+    
+
+    def _compute_openmm_loss_and_write_pdbs(self, loss_fn):
+        """Compute the OpenMM loss and write out the predicted and true structures to PDBs.
+    
+        Args:
+            loss_fn: A function that computes the OpenMM loss when called.
+    
+        Returns:
+            **loss** (torch.Tensor): The OpenMM loss.
+
+        """
+        loss, scn_proteins_pred, scn_proteins_true = loss_fn()
+        if (
+            self.config['openmm']['write_pdbs'] and 
+            self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0
+            ):
+            if len(scn_proteins_true):
+                # Write out the predicted and true structures, padded left with 4 zeros
+                # to make the filenames sort correctly
+                true_fn = os.path.join(
+                    self.config.openmm.pdb_dir,
+                    f"true/true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                pred_fn = os.path.join(
+                    self.config.openmm.pdb_dir,
+                    f"pred/pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                scn_proteins_true[0].to_pdb(true_fn)
+                scn_proteins_pred[0].to_pdb(pred_fn)
+                self.struct_idx += 1
+                wandb.log({"structures/train/true": wandb.Molecule(true_fn)}, commit=False)
+                wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)}, commit=False)
+                base_path = os.path.split(self.config.openmm.pdb_dir)[0]
+                wandb.save(true_fn, base_path=base_path)
+                wandb.save(pred_fn, base_path=base_path)
+        elif self.config['openmm']['write_pdbs']:
+            self.struct_idx += 1
+        return loss

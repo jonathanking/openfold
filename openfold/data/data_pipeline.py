@@ -15,6 +15,7 @@
 
 import os
 import datetime
+import logging
 from multiprocessing import cpu_count
 from typing import Mapping, Optional, Sequence, Any
 
@@ -727,7 +728,8 @@ class DataPipeline:
         else:
             with open(pdb_path, 'r') as f:
                 pdb_str = f.read()
-
+        # MOD-JK: Report pdb_path.
+        logging.info(f"Processing {pdb_path}")        
         protein_object = protein.from_pdb_string(pdb_str, chain_id)
         input_sequence = _aatype_to_str_sequence(protein_object.aatype) 
         description = os.path.splitext(os.path.basename(pdb_path))[0].upper()

@@ -364,18 +364,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.last_lr_step = lr_step
 
 
-def main(args):
-    if(args.seed is not None):
-        seed_everything(args.seed) 
-
-    config = model_config(
-        args.config_preset,
-        train=True,
-        low_prec=(str(args.precision) == "16"),
-        num_workers=args.num_workers,
-    )
-
-    # MOD-JK: Whether to use OpenMM loss from sidechainnet
+def update_openmm_config(config, args):
     config.loss.openmm.use_openmm = args.use_openmm
     config.loss.openmm.add_struct_metrics = args.add_struct_metrics
     config.loss.openmm.weight = args.openmm_weight
@@ -391,6 +380,26 @@ def main(args):
     for _subdir in ["true", "pred"]:
         os.makedirs(os.path.join(config.loss.openmm.pdb_dir, _subdir), exist_ok=True)
     config.loss.openmm.use_scn_pdb_names = args.use_scn_pdb_names
+    config.loss.openmm.squashed_loss = args.openmm_squashed_loss
+    config.loss.openmm.squashed_loss_factor = args.openmm_squashed_loss_factor
+    if args.openmm_modified_sigmoid:
+        config.loss.openmm.modified_sigmoid = True
+        A, B, C, D = map(float, args.openmm_modified_sigmoid.split(","))
+        config.loss.openmm.modified_sigmoid_params = (A, B, C, D)
+
+
+
+def main(args):
+    if(args.seed is not None):
+        seed_everything(args.seed) 
+
+    config = model_config(
+        args.config_preset,
+        train=True,
+        low_prec=(str(args.precision) == "16"),
+        num_workers=args.num_workers,
+    )
+
 
     # MOD-JK: Overwrite the config with the args
     if args.use_lma and args.use_flash_attn:
@@ -485,9 +494,10 @@ def main(args):
             notes=args.wandb_notes,
             **{"entity": args.wandb_entity}
         )
-        # MOD-JK: save config to wandb
-        wdb_logger.experiment.config.update(vars(args))
+        # MOD-JK: save config to wandb, log gradients/params
+        wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
         loggers.append(wdb_logger)
+        wandb.watch(model_module, log="all")
 
     if(args.deepspeed_config_path is not None):
         strategy = DeepSpeedPlugin(
@@ -787,6 +797,22 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to clear the cache between blocks in extra_msa_stack")
+    parser.add_argument("--openmm_squashed_loss",
+                        type=bool_type,
+                        default=False,
+                        help="A modified version of OpenMM loss meant to squash large values."
+                        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
+    parser.add_argument("--openmm_squashed_loss_factor",
+                        type=float,
+                        default=100.,
+                        help="A modified version of OpenMM loss meant to squash large values."
+                        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
+    parser.add_argument("--openmm_modified_sigmoid",
+                        type=str,
+                        default="",
+                        help="A modified version of OpenMM loss meant to squash large values."
+                             "L(x,a,b,c,d) = (1/a + exp(-(d*x+b)/c))**(-1) - (a-1)."
+                             "The argument is a comma-separated list of the parameters a,b,c,d.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass

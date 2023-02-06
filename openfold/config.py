@@ -76,6 +76,26 @@ def model_config(
         c.data.data_module.data_loaders.num_workers = num_workers
         # c.model.heads.tm.enabled = True
         # c.loss.tm.weight = 0.1
+        
+    elif name == "finetuning_sidechainnet_ommloss_only":
+        # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
+        # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
+        # so we revert to initial_training settings, but keep the finetuning loss weights
+        c.loss.violation.weight = 0.
+        c.loss.experimentally_resolved.weight = 0.
+        c.loss.distogram.weight = 0.
+        c.loss.fape.weight = 0.
+        c.loss.plddt_loss.weight = 0.
+        c.loss.masked_msa.weight = 0.
+        c.loss.supervised_chi.weight = 0.
+        c.loss.violation.weight = 0.
+        c.loss.tm.weight = 0.
+
+        c.data.data_module.data_loaders.num_workers = num_workers
+
+
+        # c.model.heads.tm.enabled = True
+        # c.loss.tm.weight = 0.1
     elif name == "finetuning_ptm":
         c.data.train.max_extra_msa = 5120
         c.data.train.crop_size = 384
@@ -629,7 +649,11 @@ config = mlc.ConfigDict(
                 "pdb_dir": "./pdbs",
                 "use_scn_pdb_names": False,
                 "scale_by_length": False,
-                "force_clipping_val": 1e6
+                "force_clipping_val": 1e6,
+                "squashed_loss": False,
+                "squashed_loss_factor": 100.0,
+                "modified_sigmoid": False,
+                "modified_sigmoid_params": (1,1,1,1)
             },
         },
         "ema": {"decay": 0.999},
