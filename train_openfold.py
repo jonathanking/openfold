@@ -66,9 +66,6 @@ class OpenFoldWrapper(pl.LightningModule):
         
         self.cached_weights = None
         self.last_lr_step = -1
-        
-        # MOD-JK: used to track runtime performance
-        self._durations = []
 
     def forward(self, batch):
         return self.model(batch)
@@ -100,9 +97,6 @@ class OpenFoldWrapper(pl.LightningModule):
             self.log(f"{phase}/{k}", v, on_step=True, on_epoch=True, logger=True)
 
     def training_step(self, batch, batch_idx):
-        # MOD-JK: Start recording the time this function takes
-        _start_time = time.time()
-
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
 
@@ -119,13 +113,6 @@ class OpenFoldWrapper(pl.LightningModule):
 
         # Log it
         self._log(loss_breakdown, batch, outputs)
-
-        # Measure the end time and report how long this function took
-        _end_time = time.time()
-        duration = _end_time - _start_time
-        self._durations.append(duration)
-        self.log("train/step_time", duration, on_step=True, on_epoch=False, logger=True)
-
 
         return loss
 
@@ -164,11 +151,17 @@ class OpenFoldWrapper(pl.LightningModule):
 
     def on_fit_end(self):
         self._fit_end_time = time.time()
-        # MOD-JK: At the end of training, log the average time per step
-        avg_duration = np.mean(self._durations)
-        total_duration = self._fit_end_time - self._fit_start_time
-        wandb.run.summary["avg_step_time"] = avg_duration
         wandb.run.summary["total_fit_time"] = self._fit_end_time - self._fit_start_time
+    
+    def on_train_batch_start(self, batch, batch_idx):
+        # Log the training_batch_time
+        self._batch_start_time = time.time()
+    
+    def on_train_batch_end(self, outputs, batch, batch_idx) -> None:
+        # Compute and log the training_batch_time
+        batch_end_time = time.time()
+        batch_duration = batch_end_time - self._batch_start_time
+        self.log("train/batch_time", batch_duration, on_step=True, on_epoch=False, logger=True)
 
     def _compute_validation_metrics(self, 
         batch, 
@@ -414,6 +407,7 @@ def main(args):
         num_workers=args.num_workers,
     )
 
+    update_openmm_config(config, args)
 
     # MOD-JK: Overwrite the config with the args
     if args.use_lma and args.use_flash_attn:
@@ -509,6 +503,7 @@ def main(args):
             id=args.wandb_id,
             project=args.wandb_project,
             notes=args.wandb_notes,
+            tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
             **{"entity": args.wandb_entity}
         )
         # MOD-JK: save config to wandb, log gradients/params
@@ -834,6 +829,10 @@ if __name__ == "__main__":
                         help="A modified version of OpenMM loss meant to squash large values."
                              "L(x,a,b,c,d) = (1/a + exp(-(d*x+b)/c))**(-1) - (a-1)."
                              "The argument is a comma-separated list of the parameters a,b,c,d.")
+    parser.add_argument("--wandb_tags",
+                        type=str,
+                        default="",
+                        help="Comma-separated list of tags to add to wandb run.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
