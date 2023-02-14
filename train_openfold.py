@@ -420,6 +420,10 @@ def main(args):
         config.globals.use_flash = True
     if args.clear_cache_between_blocks:
         config.model.extra_msa.extra_msa_stack.clear_cache_between_blocks = True
+    if args.violation_loss_weight is not None:
+        config.loss.violation.weight = args.violation_loss_weight
+    if args.exp_resolved_loss_weight is not None:
+        config.loss.experimentally_resolved.weight = args.exp_resolved_loss_weight
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -446,6 +450,9 @@ def main(args):
     if(args.resume_from_jax_params):
         model_module.load_from_jax(args.resume_from_jax_params)
         logging.info(f"Successfully loaded JAX parameters at {args.resume_from_jax_params}...")
+    if args.set_lr_step is not None:
+        model_module.resume_last_lr_step(args.set_lr_step)
+        logging.info(f"Successfully set lr step to {args.set_lr_step}...")
  
     # TorchScript components of the model
     if(args.script_modules):
@@ -491,7 +498,7 @@ def main(args):
         )
         callbacks.append(perf)
 
-    if(args.log_lr):
+    if(not args.do_not_log_lr):
         lr_monitor = LearningRateMonitor(logging_interval="step")
         callbacks.append(lr_monitor)
 
@@ -504,7 +511,8 @@ def main(args):
             project=args.wandb_project,
             notes=args.wandb_notes,
             tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
-            **{"entity": args.wandb_entity}
+            resume=args.wandb_id if args.wandb_id else None,
+            **{"entity": args.wandb_entity},
         )
         # MOD-JK: save config to wandb, log gradients/params
         wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
@@ -721,8 +729,8 @@ if __name__ == "__main__":
         )
     )
     parser.add_argument(
-        "--log_lr", action="store_true", default=False,
-        help="Whether to log the actual learning rate"
+        "--do_not_log_lr", action="store_true", default=False,
+        help="Whether to log the actual learning rate. If this flag is not passed, Lr is logged."
     )
     parser.add_argument(
         "--config_preset", type=str, default="initial_training",
@@ -833,6 +841,18 @@ if __name__ == "__main__":
                         type=str,
                         default="",
                         help="Comma-separated list of tags to add to wandb run.")
+    parser.add_argument("--violation_loss_weight",
+                        type=float,
+                        default=None,
+                        help="Weight applied to the violation loss.")
+    parser.add_argument("--exp_resolved_loss_weight",
+                        type=float, 
+                        default=None,
+                        help="Weight applied to the experimentally resolved loss.")
+    parser.add_argument("--set_lr_step",
+                        type=int,
+                        default=None,
+                        help="Step at which to set the learning rate.")
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
