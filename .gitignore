@@ -21,3 +21,6 @@ flash-attention/
 lib/
 data/
 build/
+flash-attention
+out
+attn_core_inplace_cuda.cpython-37m-x86_64-linux-gnu.so
