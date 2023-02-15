@@ -597,11 +597,20 @@ def main(args):
     else:
         ckpt_path = args.resume_from_ckpt
 
-    trainer.fit(
-        model_module, 
-        datamodule=data_module,
-        ckpt_path=ckpt_path,
-    )
+    if args.trainer_mode == "fit":
+        trainer.fit(
+            model_module, 
+            datamodule=data_module,
+            ckpt_path=ckpt_path,
+        )
+    elif args.trainer_mode == "validate":
+        trainer.validate(
+            model_module, 
+            datamodule=data_module,
+            ckpt_path=ckpt_path,
+        )
+    else:
+        raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
 
 
 def bool_type(bool_str: str):
@@ -908,6 +917,10 @@ if __name__ == "__main__":
                         type=int,
                         default=None,
                         help="Number of steps after which to decay the LR.")
+    parser.add_argument("--trainer_mode",
+                        type=str,
+                        default="fit",
+                        help="Mode for the trainer. Can be one of ['fit', 'validate']. Defaults to 'fit'.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    
