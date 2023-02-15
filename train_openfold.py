@@ -53,6 +53,42 @@ from openfold.utils.logger import PerformanceLoggingCallback
 import sidechainnet.examples.losses as scn_losses
 import wandb
 
+from tqdm import tqdm
+from tqdm.utils import _unicode, disp_len
+
+_TQDM_STATUS_EVERY_N = 2
+
+if "SLURM_JOB_ID" in os.environ:
+    def status_printer(self, file):
+        """
+        Manage the printing and in-place updating of a line of characters.
+        Note that if the string is longer than a line, then in-place
+        updating may not work (it will print a new line at each refresh).
+        """
+        self._status_printer_counter = 0
+        fp = file
+        fp_flush = getattr(fp, 'flush', lambda: None)  # pragma: no cover
+        if fp in (sys.stderr, sys.stdout):
+            getattr(sys.stderr, 'flush', lambda: None)()
+            getattr(sys.stdout, 'flush', lambda: None)()
+
+        def fp_write(s):
+            fp.write(_unicode(s))
+            fp_flush()
+
+        last_len = [0]
+
+        def print_status(s):
+            self._status_printer_counter += 1
+            if self._status_printer_counter % _TQDM_STATUS_EVERY_N == 0:
+                len_s = disp_len(s)
+                fp_write(s + (' ' * max(last_len[0] - len_s, 0)) + '\n')
+                last_len[0] = len_s
+
+        return print_status
+    tqdm.status_printer = status_printer
+    logging.info("Overwriting tqdm status printer for SLURM output.")
+
 
 class OpenFoldWrapper(pl.LightningModule):
     def __init__(self, config):
@@ -336,6 +372,7 @@ class OpenFoldWrapper(pl.LightningModule):
 
         lr_scheduler = AlphaFoldLRScheduler(
             optimizer,
+            **self.config.scheduler
         )
 
         return {
@@ -424,6 +461,12 @@ def main(args):
         config.loss.violation.weight = args.violation_loss_weight
     if args.exp_resolved_loss_weight is not None:
         config.loss.experimentally_resolved.weight = args.exp_resolved_loss_weight
+    if args.scheduler_last_epoch is not None:
+        config.scheduler.last_epoch = args.scheduler_last_epoch
+    if args.scheduler_max_lr is not None:
+        config.scheduler.max_lr = args.scheduler_max_lr
+    if args.scheduler_decay_every_n_steps is not None:
+        config.scheduler.decay_every_n_steps = args.scheduler_decay_every_n_steps
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -853,6 +896,19 @@ if __name__ == "__main__":
                         type=int,
                         default=None,
                         help="Step at which to set the learning rate.")
+    parser.add_argument("--scheduler_last_epoch",
+                        type=int,
+                        default=-1,
+                        help="Step to init the LR scheduler.")
+    parser.add_argument("--scheduler_max_lr",
+                        type=float,
+                        default=.001,
+                        help="Max LR for the scheduler.")
+    parser.add_argument("--scheduler_decay_every_n_steps",
+                        type=int,
+                        default=None,
+                        help="Number of steps after which to decay the LR.")
+    
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
@@ -890,5 +946,11 @@ if __name__ == "__main__":
     if args.debug:
         # Set logging level to debug
         logging.basicConfig(level=logging.DEBUG)
+        root = logging.getLogger()
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        root.addHandler(handler)
 
     main(args)

@@ -657,5 +657,10 @@ config = mlc.ConfigDict(
             },
         },
         "ema": {"decay": 0.999},
+        "scheduler": {
+            "last_epoch": -1,
+            "max_lr": 0.001,
+            "decay_every_n_steps": 50000,
+            }
     }
 )
