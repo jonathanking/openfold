@@ -16,4 +16,5 @@ openfold/issues/test_openfold.py
 *.html
 *.txt
 *.code-workspace
-
+out/
+flash-attention/
