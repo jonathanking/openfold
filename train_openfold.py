@@ -605,8 +605,8 @@ def main(args):
         )
     elif args.trainer_mode == "validate":
         trainer.validate(
-            model_module, 
-            datamodule=data_module,
+            model_module,
+            dataloaders=data_module.train_dataloader(), 
             ckpt_path=ckpt_path,
         )
     else:
