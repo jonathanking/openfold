@@ -16,5 +16,12 @@ openfold/issues/test_openfold.py
 *.html
 *.txt
 *.code-workspace
+<<<<<<< Updated upstream
 out/
 flash-attention/
+=======
+flash-attention
+**/flash-attention/**
+data/
+lib/
+>>>>>>> Stashed changes
