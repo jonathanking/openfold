@@ -19,14 +19,31 @@ echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_
 source scripts/activate_conda_env.sh
 
 ############################
+##          Vars          ##
+############################
+# For sidechainnet
+# echo "Using sidechainnet data"
+# TRAIN_STRUCTURES_DIR=data/train_structs/pdb_files_for_scnmin/
+# TEMPLATE_STRUCTURES_DIR=data/template_structs/mmcif_files_for_scn/
+# TRAIN_CACHE_OUT=data/caches/chain_data_cache_scn.json
+# TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_scn.json
+
+# For typical openfold
+echo "Using openfold data"
+TRAIN_STRUCTURES_DIR=data/train_structs/mmcif_files_for_roda/
+TEMPLATE_STRUCTURES_DIR=data/template_structs/mmcif_files_for_roda/
+TRAIN_CACHE_OUT=data/caches/chain_data_cache.json
+TEMPLATE_CACHE_OUT=data/caches/mmcif_cache.json
+
+############################
 ##     Array Job Exec.    ##
 ############################
 echo "Generating training data cache..."
-python scripts/generate_chain_data_cache.py data/train_structs/pdb_files_for_scnmin/ data/caches/chain_data_cache.json --no_workers=${SLURM_NTASKS}	
+python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACHE_OUT} --no_workers=${SLURM_NTASKS}	
 echo "done."
 
 echo "Generating template data cache..."
-python scripts/generate_mmcif_cache.py data/template_structs/mmcif_files_for_scn/ data/caches/mmcif_cache.json --no_workers=${SLURM_NTASKS}	
+python scripts/generate_mmcif_cache.py ${TEMPLATE_STRUCTURES_DIR} ${TEMPLATE_CACHE_OUT}--no_workers=${SLURM_NTASKS}	
 echo "done."
 
 # Print out the generated file paths
