@@ -396,11 +396,15 @@ class OpenFoldDataset(torch.utils.data.Dataset):
         epoch_len: int,
         generator: torch.Generator = None,
         _roll_at_init: bool = True,
+        use_alphafold_sampling_procedure: bool = True,
     ):
         self.datasets = datasets
         self.probabilities = probabilities
         self.epoch_len = epoch_len
         self.generator = generator
+        self.use_alphafold_sampling_procedure = use_alphafold_sampling_procedure
+        if not self.use_alphafold_sampling_procedure:
+            assert len(datasets) == 1, "Cannot use non-AlphaFold sampling procedure with multiple datasets."
 
         def looped_shuffled_dataset_idx(dataset_len):
             while True:
@@ -454,11 +458,19 @@ class OpenFoldDataset(torch.utils.data.Dataset):
             self.reroll()
 
     def __getitem__(self, idx):
-        dataset_idx, datapoint_idx = self.datapoints[idx]
-        return self.datasets[dataset_idx][datapoint_idx]
+        if self.use_alphafold_sampling_procedure:
+            dataset_idx, datapoint_idx = self.datapoints[idx]
+            return self.datasets[dataset_idx][datapoint_idx]
+        else:
+            # MOD-JK: allow direct dataset access rather than sampling
+            return self.datasets[0][idx]
 
     def __len__(self):
-        return self.epoch_len
+        if self.use_alphafold_sampling_procedure:
+            return self.epoch_len
+        else:
+            # MOD-JK: allow direct dataset access rather than sampling
+            return len(self.datasets[0])
 
     def reroll(self):
         # NOTE-JK: This selects the datasets to use
@@ -746,6 +758,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
                 epoch_len=self.train_epoch_len,
                 generator=generator,
                 _roll_at_init=False,
+                use_alphafold_sampling_procedure=self.config.data_module.use_alphafold_sampling,  # MOD-JK
             )
     
             if(self.val_data_dir is not None):

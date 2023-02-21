@@ -103,6 +103,8 @@ class OpenFoldWrapper(pl.LightningModule):
         self.cached_weights = None
         self.last_lr_step = -1
 
+        self.automatic_optimization = False
+
     def forward(self, batch):
         return self.model(batch)
 
@@ -131,24 +133,73 @@ class OpenFoldWrapper(pl.LightningModule):
 
         for k, v in other_metrics.items():
             self.log(f"{phase}/{k}", v, on_step=True, on_epoch=True, logger=True)
+        
+        if self.config.logging.log_to_csv:
+            self._log_to_csv(batch, loss_breakdown, other_metrics, train=train)
+    
+    def _log_to_csv(self, batch, loss_breakdown, other_metrics, train=True):
+        """Log to a CSV file for later analysis.
+        Each row should reflect metric for a single protein (there may be multiple
+        proteins in a batch). Each row should have the protein name followed by all of the
+        loss and metric values found in the loss_breakdown and other_metric dictionaries.
+        """
+        phase = "train" if train else "val"
+        csv_path = os.path.join(self.logger.experiment[0].dir, f"{phase}.csv")
+        if not os.path.exists(csv_path):
+            logging.info(f"Creating CSV file at {csv_path}")
+            with open(csv_path, "w") as f:
+                f.write("protein_name,")
+                f.write(",".join(loss_breakdown.keys()))
+                f.write(",")
+                f.write(",".join(other_metrics.keys()))
+                f.write("\n")
+
+        protein_name = batch["name"][0] if len(batch["name"]) == 1 else "batch"
+
+        fmt = lambda tensor_to_str: str(tensor_to_str.item()) if isinstance(tensor_to_str, torch.Tensor) else str(tensor_to_str)
+
+        with open(csv_path, "a") as f:
+            f.write(f"{protein_name},")
+            f.write(",".join([fmt(v) for v in loss_breakdown.values()]))
+            f.write(",")
+            f.write(",".join([fmt(v) for v in other_metrics.values()]))
+            f.write("\n")
 
     def training_step(self, batch, batch_idx):
+        opt = self.optimizers()
+        opt.zero_grad()
+
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
 
         # Run the model
-        outputs = self(batch)
+        if not self.config.model.disable_backwards:
+            outputs = self(batch)
+        else:
+            with torch.no_grad():
+                outputs = self(batch)
 
         # Remove the recycling dimension
         batch = tensor_tree_map(lambda t: t[..., -1], batch)
 
         # Compute loss
-        loss, loss_breakdown = self.loss(
-            outputs, batch, _return_breakdown=True
-        )
+        if not self.config.model.disable_backwards:
+            loss, loss_breakdown = self.loss(
+                outputs, batch, _return_breakdown=True
+            )
+        else:
+            with torch.no_grad():
+                loss, loss_breakdown = self.loss(
+                    outputs, batch, _return_breakdown=True
+                )
 
         # Log it
         self._log(loss_breakdown, batch, outputs)
+
+        # Backprop
+        if not self.config.model.disable_backwards:
+            self.manual_backward(loss)
+            opt.step()
 
         return loss
 
@@ -407,7 +458,6 @@ class OpenFoldWrapper(pl.LightningModule):
                 self.model, jax_path, version=model_version
         )
 
-
 def update_openmm_config(config, args):
     config.loss.openmm.use_openmm = args.use_openmm
     config.loss.openmm.add_struct_metrics = args.add_struct_metrics
@@ -467,6 +517,12 @@ def main(args):
         config.scheduler.max_lr = args.scheduler_max_lr
     if args.scheduler_decay_every_n_steps is not None:
         config.scheduler.decay_every_n_steps = args.scheduler_decay_every_n_steps
+    if args.use_alphafold_sampling is not None:
+        config.data.data_module.use_alphafold_sampling = args.use_alphafold_sampling
+    if args.disable_backwards is not None:
+        config.model.disable_backwards = args.disable_backwards
+    if args.log_to_csv is not None:
+        config.logging.log_to_csv = args.log_to_csv
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -921,6 +977,18 @@ if __name__ == "__main__":
                         type=str,
                         default="fit",
                         help="Mode for the trainer. Can be one of ['fit', 'validate']. Defaults to 'fit'.")
+    parser.add_argument("--use_alphafold_sampling",
+                        type=bool_type,
+                        default=True,
+                        help="Whether to use the AlphaFold sampling strategy.")
+    parser.add_argument("--disable_backwards",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to disable backwards pass.")
+    parser.add_argument("--log_to_csv",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to log metrics to a csv file.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

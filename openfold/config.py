@@ -391,6 +391,7 @@ config = mlc.ConfigDict(
                     "num_workers": 16,
                     "pin_memory": True,
                 },
+                "use_alphafold_sampling": True,  # MOD-JK
             },
         },
         # Recurring FieldReferences that can be changed globally here
@@ -412,6 +413,7 @@ config = mlc.ConfigDict(
             "eps": eps,
         },
         "model": {
+            "disable_backwards": False,  # MOD-JK
             "_mask_trans": False,
             "input_embedder": {
                 "tf_dim": 22,
@@ -661,6 +663,9 @@ config = mlc.ConfigDict(
             "last_epoch": -1,
             "max_lr": 0.001,
             "decay_every_n_steps": 50000,
-            }
+            },
+        "logging": {
+            "log_to_csv": False,
+        }
     }
 )
