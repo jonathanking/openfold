@@ -482,21 +482,7 @@ def update_openmm_config(config, args):
         config.loss.openmm.modified_sigmoid_params = (A, B, C, D)
 
 
-
-def main(args):
-    if(args.seed is not None):
-        seed_everything(args.seed) 
-
-    config = model_config(
-        args.config_preset,
-        train=True,
-        low_prec=(str(args.precision) == "16"),
-        num_workers=args.num_workers,
-    )
-
-    update_openmm_config(config, args)
-
-    # MOD-JK: Overwrite the config with the args
+def update_experimental_config(config, args):
     if args.use_lma and args.use_flash_attn:
         raise ValueError("Cannot use both LMA and FlashAttention")
     if args.use_lma:
@@ -523,6 +509,27 @@ def main(args):
         config.model.disable_backwards = args.disable_backwards
     if args.log_to_csv is not None:
         config.logging.log_to_csv = args.log_to_csv
+    if args.skip_scnids_file != "":
+        with open(args.skip_scnids_file, "r") as f:
+            skip_scnids = f.read().splitlines()
+        config.data.data_module.skip_scnids = skip_scnids
+
+
+
+def main(args):
+    if(args.seed is not None):
+        seed_everything(args.seed) 
+
+    config = model_config(
+        args.config_preset,
+        train=True,
+        low_prec=(str(args.precision) == "16"),
+        num_workers=args.num_workers,
+    )
+
+    # MOD-JK: Overwrite the config with my experimental args
+    update_openmm_config(config, args)
+    update_experimental_config(config, args)
 
     model_module = OpenFoldWrapper(config)
     if args.jax_param_path is not None:
@@ -961,6 +968,18 @@ if __name__ == "__main__":
                         type=int,
                         default=None,
                         help="Step at which to set the learning rate.")
+    # parser.add_argument("--scheduler_type",
+    #                     type=str,
+    #                     default='alphafold',
+    #                     help="Type of scheduler to use. Can be one of ['alphafold', 'adam'].")
+    # parser.add_argument("--scheduler_warmup_no_steps",
+    #                     type=int,
+    #                     default=None,
+    #                     help="Number of steps to warmup the scheduler for.")
+    # parser.add_argument("--scheduler_start_decay_after_n_steps",
+    #                     type=int,
+    #                     default=None,
+    #                     help="Number of steps after which to start decaying the LR.")
     parser.add_argument("--scheduler_last_epoch",
                         type=int,
                         default=-1,
@@ -987,8 +1006,12 @@ if __name__ == "__main__":
                         help="Whether to disable backwards pass.")
     parser.add_argument("--log_to_csv",
                         type=bool_type,
-                        default=False,
+                        default=True,
                         help="Whether to log metrics to a csv file.")
+    parser.add_argument("--skip_scnids_file",
+                        type=str,
+                        default="",
+                        help="File containing a list of SidechainNet IDs to skip.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

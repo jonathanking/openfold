@@ -392,6 +392,7 @@ config = mlc.ConfigDict(
                     "pin_memory": True,
                 },
                 "use_alphafold_sampling": True,  # MOD-JK
+                "skip_scnids": [],  # MOD-JK
             },
         },
         # Recurring FieldReferences that can be changed globally here

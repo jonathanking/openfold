@@ -163,7 +163,29 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     len(missing),
                     missing_examples,
                     chain_data_cache_path)
-                
+        
+        # MOD-JK: Skip specified scnids
+        removed = []
+        for scnid in self.config.data_module.skip_scnids:
+            if "#" in scnid:
+                _, scnid = scnid.split("#")
+            rcsbid_model_chain = scnid.split('_')
+            if len(rcsbid_model_chain) == 3:
+                rcsbid, model, chain = rcsbid_model_chain
+            elif len(rcsbid_model_chain) == 2:
+                rcsbid, chain = rcsbid_model_chain
+            else:
+                continue
+            chainid = f'{rcsbid.lower()}_{chain.upper()}'
+            to_remove = []
+            for i in range(len(self._chain_ids)):
+                if chainid in self._chain_ids[i]:
+                    to_remove.append(self._chain_ids[i])
+            for c in to_remove:
+                self._chain_ids.remove(c)
+                removed.append(c)
+        print(f'Skipping {len(removed)} SidechainNet entries: {removed[:5]}...')
+                          
         # MOD-JK: Remove astral entries
         # _start = len(self._chain_ids)
         # self._chain_ids = [c for c in self._chain_ids if not len(c.split('_')) == 2]
@@ -474,6 +496,8 @@ class OpenFoldDataset(torch.utils.data.Dataset):
 
     def reroll(self):
         # NOTE-JK: This selects the datasets to use
+        if not self.use_alphafold_sampling_procedure:
+            return
         dataset_choices = torch.multinomial(
             torch.tensor(self.probabilities),
             num_samples=self.epoch_len,
