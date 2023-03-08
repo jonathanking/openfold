@@ -1608,12 +1608,14 @@ class AlphaFoldLoss(nn.Module):
         for loss_name, loss_fn in loss_fns.items():
             weight = self.config[loss_name].weight
             if loss_name == "openmm":
-                loss = self._compute_openmm_loss_and_write_pdbs(loss_fn)
-                losses["openmm_scaled"] = loss.detach().clone() * weight
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
-                losses["openmm_scaled"] = loss.detach().clone() * weight
+                    losses["openmm_scaled"] = loss.detach().clone() * weight
+                else:
+                    loss = self._compute_openmm_loss_and_write_pdbs(loss_fn)
+                    losses["openmm_scaled"] = loss.detach().clone() * weight
+
             else:
                 loss = loss_fn()
             if (torch.isnan(loss) or torch.isinf(loss)):
@@ -1631,6 +1633,7 @@ class AlphaFoldLoss(nn.Module):
         cum_loss = cum_loss * torch.sqrt(min(seq_len, crop_len))
 
         losses["loss"] = cum_loss.detach().clone()
+        losses["seq_length"] = seq_len.detach().clone()
 
         if (not _return_breakdown):
             return cum_loss

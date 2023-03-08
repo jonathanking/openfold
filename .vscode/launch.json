@@ -1,0 +1,212 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "finetune OF",
+            "type": "python",
+            "request": "launch",
+            "program": "/scr/openfold/train_openfold.py",
+            "console": "integratedTerminal",
+            // "env": {
+            //     "CUDA_LAUNCH_BLOCKING": "1",
+            //     "CUDA_VISIBLE_DEVICES": "0"
+            // },
+            "args": [  // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
+                "data/train_structs/pdb_files_for_scnmin/", // minimized scn files for training
+                "data/alignments/scn_roda2/", // ALIGN_DIR, before making index
+                // "/scr/dbs/", // ALIGN_DIR, after making index; see --alignment_index_path
+                "data/template_structs/mmcif_files_for_scn/", // MMCIF_FILES
+                "out/experiments/221212/out1", // OUT_DIR
+                "2021-10-10",
+                "--gpus=1",
+                "--checkpoint_every_epoch",
+                "--obsolete_pdbs_file_path=data/obsolete.dat",
+                "--config_preset=finetuning_sidechainnet",
+                "--wandb",
+                "--wandb_project=finetune-openfold-01",
+                "--wandb_entity=jonathanking",
+                "--log_every_n_steps=1",
+                "--resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt",
+                "--resume_model_weights_only=True",
+                "--train_epoch_len=6",
+                "--max_epochs=1",
+                "--debug",
+                "--use_openmm=True",
+                "--add_struct_metrics",
+                "--openmm_weight=1e-7",
+                "--openmm_activation=None",
+                // "--overfit_single_batch"
+                "--use_scn_pdb_names",
+                "--write_pdbs",
+                "--write_pdbs_every_n_steps=3",
+                "--seed=0",
+                "--template_release_dates_cache_path=data/caches/mmcif_cache.json",
+                "--deepspeed_config_path=deepspeed_config.json",
+                "--train_chain_data_cache_path=data/caches/chain_data_cache.json",
+                "--benchmark",
+                "--num_workers=1",
+                "--precision=bf16",
+                "--alignment_index_path=data/alignment_index/super.index", // ALIGNMENT_INDEX
+                "--wandb_notes='debugging vscode'",
+                "--experiment=ftune-debugvscode",
+            ],
+            // "justMyCode": true,
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "finetune OF nonscn data",
+            "type": "python",
+            "request": "launch",
+            "program": "/scr/openfold/train_openfold.py",
+            "console": "integratedTerminal",
+
+            "args": [  // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
+                "/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", // minimized scn files for training
+                "/scr/scn_roda2/", // ALIGN_DIR, before making index
+                // "/scr/dbs/", // ALIGN_DIR, after making index; see --alignment_index_path
+                "/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", // MMCIF_FILES
+                "/scr/experiments/230208/out1", // OUT_DIR
+                "2021-10-10",
+                "--gpus=1",
+                "--checkpoint_every_epoch",
+                "--obsolete_pdbs_file_path=/scr/alphafold_data/pdb_mmcif/obsolete.dat",
+                "--config_preset=finetuning_sidechainnet",
+                "--wandb",
+                "--wandb_project=finetune-openfold-01",
+                "--wandb_entity=jonathanking",
+                "--log_every_n_steps=1",
+                "--resume_from_ckpt=/scr/openfold/openfold/resources/openfold_params/initial_training.pt",
+                "--resume_model_weights_only=True",
+                "--train_epoch_len=6",
+                "--max_epochs=1",
+                "--debug",
+                "--use_openmm=False",
+                "--add_struct_metrics",
+                "--openmm_weight=1e-7",
+                "--openmm_activation=None",
+                // "--overfit_single_batch"
+                // "--use_scn_pdb_names",
+                "--write_pdbs",
+                "--write_pdbs_every_n_steps=3",
+                "--seed=0",
+                "--template_release_dates_cache_path=mmcif_cache.json",
+                "--train_chain_data_cache_path=chain_data_cache_roda.json",
+                "--benchmark",
+                "--num_workers=1",
+                "--precision=32",
+                // "--alignment_index_path=/scr/dbs/super.index", // ALIGNMENT_INDEX
+                "--wandb_notes='debugging vscode'",
+                "--experiment=ftune-debugvscode",
+            ],
+            // "justMyCode": true,
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "finetune OF nonscn data v2",
+            "type": "python",
+            "request": "launch",
+            "program": "/net/pulsar/home/koes/jok120/openfold/train_openfold.py",
+            "console": "integratedTerminal",
+
+            "args": [  // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
+                "data/train_structs/mmcif_files_for_roda/", // minimized scn files for training
+                "data/alignments/roda/", // ALIGN_DIR, before making index
+                // "/scr/dbs/", // ALIGN_DIR, after making index; see --alignment_index_path
+                "data/template_structs/mmcif_files_for_roda/", // MMCIF_FILES
+                "out/experiments/230307b/", // OUT_DIR
+                "2021-10-10",
+                "--template_release_dates_cache_path=data/caches/mmcif_cache.json",
+                "--train_chain_data_cache_path=data/caches/chain_data_cache.json",
+                "--obsolete_pdbs_file_path=data/obsolete.dat",
+                "--resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt",
+                // "--deepspeed_config_path=deepspeed_config_jk00.json",
+                // "--skip_scnids=problematic_ids.txt",
+                "--gpus=1",
+                "--checkpoint_every_epoch",
+                "--wandb",
+                "--wandb_project=finetune-openfold-01",
+                "--wandb_entity=jonathanking",
+                "--precision=32",
+                "--resume_model_weights_only=True",
+                "--train_epoch_len=100",
+                "--max_epochs=500",
+                "--debug",
+                "--add_struct_metrics",
+                "--openmm_weight=1",
+                "--openmm_activation=None",
+                "--seed=0",
+                "--debug",
+                "--num_workers=4",
+                "--write_pdbs",
+                "--write_pdbs_every_n_steps=100",
+                "--log_every_n_steps=1",
+                "--config_preset=finetuning_sidechainnet",
+                // "--set_lr_step=None",
+                // "--scheduler_last_epoch=-1",
+                "--scheduler_max_lr=1e-6",
+                // "--scheduler_decay_every_n_steps=None",
+                "--violation_loss_weight=0",
+                "--use_scn_pdb_names=False",
+                "--use_openmm=False",
+                "--wandb_tags='baseline,nonscn'",
+                "--wandb_notes='debugging vscode'",
+                "--experiment=ftune-debugvscode",
+            ],
+            // "justMyCode": true,
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "generate template mmcif cache",
+            "type": "python",
+            "request": "launch",
+            "program": "/scr/openfold/scripts/generate_mmcif_cache.py",
+            "console": "integratedTerminal",
+            "args": [
+                "/scr/alphafold_data/pdb_mmcif/pdb_files_for_scnmin/", // minimized scn files for training
+                "mmcif_cache.json", // ALIGN_DIR, before making index
+                "--no_workers=16"
+            
+            ],
+            "justMyCode": true,
+
+        },
+        {
+            "name": "generate training chain data cache",
+            "type": "python",
+            "request": "launch",
+            "program": "/scr/openfold/scripts/generate_chain_data_cache.py",
+            "console": "integratedTerminal",
+            "args": [
+                "/scr/alphafold_data/pdb_mmcif/mmcif_files_for_roda/", // minimized scn files for training
+                "chain_data_cache_test.json", // ALIGN_DIR, before making index
+                "--no_workers=1"
+            
+            ],
+            "justMyCode": true,
+
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

@@ -415,6 +415,7 @@ config = mlc.ConfigDict(
         },
         "model": {
             "disable_backwards": False,  # MOD-JK
+            "grad_clip_val": 0.0,
             "_mask_trans": False,
             "input_embedder": {
                 "tf_dim": 22,
@@ -662,8 +663,10 @@ config = mlc.ConfigDict(
         "ema": {"decay": 0.999},
         "scheduler": {
             "last_epoch": -1,
+            "base_lr": 0.0,
             "max_lr": 0.001,
             "decay_every_n_steps": 50000,
+            "warmup_no_steps": 1000,
             },
         "logging": {
             "log_to_csv": False,

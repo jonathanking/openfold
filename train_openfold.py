@@ -199,7 +199,12 @@ class OpenFoldWrapper(pl.LightningModule):
         # Backprop
         if not self.config.model.disable_backwards:
             self.manual_backward(loss)
+            if self.config.model.grad_clip_val != 0:
+                torch.nn.utils.clip_grad_value_(
+                    self.model.parameters(), self.config.model.grad_clip_val
+                )
             opt.step()
+            self.lr_schedulers().step()
 
         return loss
 
@@ -432,6 +437,7 @@ class OpenFoldWrapper(pl.LightningModule):
                 "scheduler": lr_scheduler,
                 "interval": "step",
                 "name": "AlphaFoldLRScheduler",
+                "frequency": 1,
             }
         }
 
@@ -513,6 +519,13 @@ def update_experimental_config(config, args):
         with open(args.skip_scnids_file, "r") as f:
             skip_scnids = f.read().splitlines()
         config.data.data_module.skip_scnids = skip_scnids
+    if args.grad_clip_val != 0:
+        config.model.grad_clip_val = args.grad_clip_val
+    if args.scheduler_warmup_no_steps is not None:
+        config.scheduler.warmup_no_steps = args.scheduler_warmup_no_steps
+    if args.scheduler_base_lr is not None:
+        config.scheduler.base_lr = args.scheduler_base_lr
+
 
 
 
@@ -579,7 +592,7 @@ def main(args):
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
-            save_top_k=2,
+            save_top_k=1,
             monitor="train/loss"
         )
         callbacks.append(mc)
@@ -622,8 +635,8 @@ def main(args):
         )
         # MOD-JK: save config to wandb, log gradients/params
         wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
+        wdb_logger.watch(model_module, log="all")
         loggers.append(wdb_logger)
-        wandb.watch(model_module, log="all")
 
     if(args.deepspeed_config_path is not None):
         strategy = DeepSpeedPlugin(
@@ -684,6 +697,12 @@ def bool_type(bool_str: str):
         return True
     else:
         raise ValueError(f'Cannot interpret {bool_str} as bool')
+
+def int_or_none_type(int_str: str):
+    if int_str.lower() == "none":
+        return None
+    else:
+        return int(int_str)
 
 
 def load_jax_params_into_model(param_path, model):
@@ -907,7 +926,7 @@ if __name__ == "__main__":
                         help="Whether to overfit to the first batch of data.")
     parser.add_argument("--use_scn_pdb_names",
                         "-scnpdb",
-                        action="store_true",
+                        type=bool_type,
                         default=False,
                         help="Whether to use SidechainNet names for PDB input directory ("
                         "train_data_dir), e.g. 1A9U_1_A.pdb instead of 1a9u.{pdb,mmcif}.")
@@ -965,23 +984,27 @@ if __name__ == "__main__":
                         default=None,
                         help="Weight applied to the experimentally resolved loss.")
     parser.add_argument("--set_lr_step",
-                        type=int,
+                        type=int_or_none_type,
                         default=None,
                         help="Step at which to set the learning rate.")
     # parser.add_argument("--scheduler_type",
     #                     type=str,
     #                     default='alphafold',
     #                     help="Type of scheduler to use. Can be one of ['alphafold', 'adam'].")
-    # parser.add_argument("--scheduler_warmup_no_steps",
-    #                     type=int,
-    #                     default=None,
-    #                     help="Number of steps to warmup the scheduler for.")
+    parser.add_argument("--scheduler_warmup_no_steps",
+                        type=int,
+                        default=None,
+                        help="Number of steps to warmup the scheduler for.")
+    parser.add_argument("--scheduler_base_lr",
+                        type=float,
+                        default=0,
+                        help="Max LR for the scheduler.")
     # parser.add_argument("--scheduler_start_decay_after_n_steps",
     #                     type=int,
     #                     default=None,
     #                     help="Number of steps after which to start decaying the LR.")
     parser.add_argument("--scheduler_last_epoch",
-                        type=int,
+                        type=int_or_none_type,
                         default=-1,
                         help="Step to init the LR scheduler.")
     parser.add_argument("--scheduler_max_lr",
@@ -989,7 +1012,7 @@ if __name__ == "__main__":
                         default=.001,
                         help="Max LR for the scheduler.")
     parser.add_argument("--scheduler_decay_every_n_steps",
-                        type=int,
+                        type=int_or_none_type,
                         default=None,
                         help="Number of steps after which to decay the LR.")
     parser.add_argument("--trainer_mode",
@@ -1012,6 +1035,10 @@ if __name__ == "__main__":
                         type=str,
                         default="",
                         help="File containing a list of SidechainNet IDs to skip.")
+    parser.add_argument("--grad_clip_val",
+                        type=float,
+                        default=0,
+                        help="Value for clipping gradients.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    
