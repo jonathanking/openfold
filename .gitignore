@@ -12,7 +12,7 @@ openfold/issues/test_openfold.py
 
 # MOD-JK ignore local data files
 *.pdb
-*.json
+*cache*.json
 *.html
 *.txt
 *.code-workspace
