@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=cachegen
+#SBATCH --job-name=cache10k
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:0
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=32
 #SBATCH --time=14-00:00:00
 #SBATCH --partition=dept_cpu
 #SBATCH --exclude=g122,g001
@@ -30,10 +30,10 @@ source scripts/activate_conda_env.sh
 
 # For typical openfold
 echo "Using openfold data"
-TRAIN_STRUCTURES_DIR=data/train_structs/mmcif_files_for_roda/
-TEMPLATE_STRUCTURES_DIR=data/template_structs/mmcif_files_for_roda/
-TRAIN_CACHE_OUT=data/caches/chain_data_cache.json
-TEMPLATE_CACHE_OUT=data/caches/mmcif_cache.json
+TRAIN_STRUCTURES_DIR=data/train_structs/random10k
+TEMPLATE_STRUCTURES_DIR=data/template_structs/random10k
+TRAIN_CACHE_OUT=data/caches/chain_data_cache_random10k.json
+TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_random10k.json
 
 ############################
 ##     Array Job Exec.    ##
@@ -43,7 +43,7 @@ python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACH
 echo "done."
 
 echo "Generating template data cache..."
-python scripts/generate_mmcif_cache.py ${TEMPLATE_STRUCTURES_DIR} ${TEMPLATE_CACHE_OUT}--no_workers=${SLURM_NTASKS}	
+python scripts/generate_mmcif_cache.py ${TEMPLATE_STRUCTURES_DIR} ${TEMPLATE_CACHE_OUT} --no_workers=${SLURM_NTASKS}	
 echo "done."
 
 # Print out the generated file paths

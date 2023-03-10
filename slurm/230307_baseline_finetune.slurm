@@ -60,7 +60,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache.json
     --num_workers=4 \
     --write_pdbs \
     --write_pdbs_every_n_steps=100 \
-    --log_every_n_steps=1 \
+    --log_every_n_steps=10 \
     --config_preset=finetuning_sidechainnet \
     --grad_clip_val=0.1 \
     --violation_loss_weight=0 \
