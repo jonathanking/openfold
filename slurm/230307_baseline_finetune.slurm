@@ -45,8 +45,8 @@ TEMPLATE_CACHE=data/caches/mmcif_cache.json
     --gpus=1 \
     --checkpoint_every_epoch \
     --wandb \
-    --wandb_project=finetune-openfold-01 \
-    --wandb_entity=jonathanking \
+    --wandb_project=finetune-openfold-02 \
+    --wandb_entity=koes-group \
     --precision=32 \
     --resume_model_weights_only=True \
     --train_epoch_len=100 \
