@@ -49,7 +49,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache.json
     --wandb_entity=koes-group \
     --precision=32 \
     --resume_model_weights_only=True \
-    --train_epoch_len=100 \
+    --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
