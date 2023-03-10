@@ -635,7 +635,6 @@ def main(args):
         )
         # MOD-JK: save config to wandb, log gradients/params
         wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
-        wdb_logger.watch(model_module, log="all")
         loggers.append(wdb_logger)
 
     if(args.deepspeed_config_path is not None):
