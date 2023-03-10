@@ -67,6 +67,16 @@ def model_config(
         c.data.train.max_msa_clusters = 512
         c.loss.violation.weight = 1.
         c.loss.experimentally_resolved.weight = 0.01
+    elif name == "finetuning_sidechainnet_large":
+        # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
+        # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
+        # so we revert to initial_training settings, but keep the finetuning loss weights
+        c.data.train.crop_size = 384
+        c.data.train.max_extra_msa = 5120
+        c.data.train.max_msa_clusters = 512
+        c.loss.violation.weight = 1.
+        c.loss.experimentally_resolved.weight = 0.01
+        c.data.data_module.data_loaders.num_workers = num_workers
     elif name == "finetuning_sidechainnet":
         # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
         # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
