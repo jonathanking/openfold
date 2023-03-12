@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=cache10k
+#SBATCH --job-name=cachetm
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:0
-#SBATCH --ntasks-per-node=32
+#SBATCH --ntasks-per-node=64
 #SBATCH --time=14-00:00:00
 #SBATCH --partition=dept_cpu
 #SBATCH --exclude=g122,g001
@@ -30,10 +30,10 @@ source scripts/activate_conda_env.sh
 
 # For typical openfold
 echo "Using openfold data"
-TRAIN_STRUCTURES_DIR=data/train_structs/random10k
-TEMPLATE_STRUCTURES_DIR=data/template_structs/random10k
-TRAIN_CACHE_OUT=data/caches/chain_data_cache_random10k.json
-TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_random10k.json
+TRAIN_STRUCTURES_DIR=data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+TRAIN_CACHE_OUT=data/caches/chain_data_cache_rodasnapshot.json
+TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
 
 ############################
 ##     Array Job Exec.    ##
@@ -48,8 +48,8 @@ echo "done."
 
 # Print out the generated file paths
 echo "Generated files:"
-echo "    data/caches/chain_data_cache.json"
-echo "    data/caches/mmcif_cache.json"
+echo "    ${TRAIN_CACHE_OUT}"
+echo "    ${TEMPLATE_CACHE_OUT}"
 
 
 

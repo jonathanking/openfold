@@ -169,6 +169,11 @@ class OpenFoldWrapper(pl.LightningModule):
         opt = self.optimizers()
         opt.zero_grad()
 
+        if batch['all_atom_positions'].sum() == 0:
+            # TODO-JK: What happened here?
+            print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
+            return
+
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
 
@@ -181,6 +186,11 @@ class OpenFoldWrapper(pl.LightningModule):
 
         # Remove the recycling dimension
         batch = tensor_tree_map(lambda t: t[..., -1], batch)
+
+        if outputs['final_atom_positions'].sum() == 0:
+            # TODO-JK: What happened here?
+            print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
+            return
 
         # Compute loss
         if not self.config.model.disable_backwards:
@@ -588,7 +598,15 @@ def main(args):
     data_module.setup()
     
     callbacks = []
-    if(args.checkpoint_every_epoch):
+    if args.checkpoint_every_n_train_steps is not None:
+        mc = ModelCheckpoint(
+            every_n_train_steps=args.checkpoint_every_n_train_steps,
+            auto_insert_metric_name=False,
+            save_top_k=1,
+            monitor="train/loss"
+        )
+        callbacks.append(mc)
+    elif(args.checkpoint_every_epoch):
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
@@ -1038,6 +1056,10 @@ if __name__ == "__main__":
                         type=float,
                         default=0,
                         help="Value for clipping gradients.")
+    parser.add_argument("--checkpoint_every_n_train_steps",
+                        type=int,
+                        default=1000,
+                        help="Number of steps after which to checkpoint the model.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

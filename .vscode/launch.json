@@ -120,14 +120,14 @@
             "console": "integratedTerminal",
 
             "args": [  // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
-                "data/train_structs/mmcif_files_for_roda/", // minimized scn files for training
-                "data/alignments/roda/", // ALIGN_DIR, before making index
+                "data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/", // minimized scn files for training
+                "data/alignments/random10k_links/", // ALIGN_DIR, before making index
                 // "/scr/dbs/", // ALIGN_DIR, after making index; see --alignment_index_path
-                "data/template_structs/mmcif_files_for_roda/", // MMCIF_FILES
-                "out/experiments/230307b/", // OUT_DIR
+                "data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/", // MMCIF_FILES
+                "out/experiments/230310/", // OUT_DIR
                 "2021-10-10",
-                "--template_release_dates_cache_path=data/caches/mmcif_cache.json",
-                "--train_chain_data_cache_path=data/caches/chain_data_cache.json",
+                "--template_release_dates_cache_path=data/caches/mmcif_cache_rodasnapshot.json",
+                "--train_chain_data_cache_path=data/caches/chain_data_cache_rodasnapshot.json",
                 "--obsolete_pdbs_file_path=data/obsolete.dat",
                 "--resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt",
                 "--gpus=1",
@@ -145,21 +145,23 @@
                 "--openmm_activation=None",
                 "--seed=0",
                 "--debug",
-                "--num_workers=4",
+                "--num_workers=5",
                 "--write_pdbs",
                 "--write_pdbs_every_n_steps=100",
                 "--log_every_n_steps=1",
                 "--config_preset=finetuning_sidechainnet",
-                "--grad_clip_val=0.1",
+                // "--grad_clip_val=0.1",
                 "--violation_loss_weight=0",
                 "--scheduler_base_lr=0",
-                "--scheduler_warmup_no_steps=100",
-                "--scheduler_max_lr=1e-6",
+                "--scheduler_warmup_no_steps=200",
+                // "--scheduler_max_lr=1e-6",
+                "--scheduler_max_lr=5e-4",
                 "--use_scn_pdb_names=False",
                 "--use_openmm=False",
+                "--use_alphafold_sampling=False",
                 "--wandb_tags='baseline,nonscn,debug'",
                 "--wandb_notes='debugging vscode'",
-                "--experiment=ftune-debugvscode-baseline",
+                "--experiment=debugvscode-baseline",
             ],
             // "justMyCode": true,
             "justMyCode": false,

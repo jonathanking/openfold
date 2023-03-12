@@ -505,9 +505,6 @@ class OpenFoldDataset(torch.utils.data.Dataset):
             generator=self.generator,
         )
 
-        # MOD-JK: Unable to get sampling to work when chain cache is not provided; StopIteration, to delete
-        # idxs = np.random.choice(range(len(self.datasets[0])), size=self.epoch_len, replace=True)
-        # self.datapoints = [(0, i) for i in idxs]
         self.datapoints = []
         for dataset_idx in dataset_choices:
             samples = self._samples[dataset_idx]
