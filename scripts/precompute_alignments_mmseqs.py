@@ -50,6 +50,7 @@ def main(args):
 
     s = 0
     while(s < len(seqs)):
+        print("Processing chunk %d-%d" % (s, s + chunk_size))
         e = s + chunk_size
         chunk_fasta = [el for tup in zip(names[s:e], seqs[s:e]) for el in tup] 
         s = e
