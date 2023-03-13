@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 from openfold.data.tools import hhsearch
 
@@ -50,7 +51,9 @@ def main(args):
 
     s = 0
     while(s < len(seqs)):
+        # flush stdout
         print("Processing chunk %d-%d" % (s, s + chunk_size))
+        sys.stdout.flush()
         e = s + chunk_size
         chunk_fasta = [el for tup in zip(names[s:e], seqs[s:e]) for el in tup] 
         s = e

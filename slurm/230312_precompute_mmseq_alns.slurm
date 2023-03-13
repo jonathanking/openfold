@@ -6,6 +6,8 @@
 #SBATCH --time=14-00:00:00
 #SBATCH --partition=dept_gpu
 #SBATCH --nodelist=g019
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=jok120
 #SBATCH --output="/net/pulsar/home/koes/jok120/openfold/out/%A_%6a.out"
 
 ############################
