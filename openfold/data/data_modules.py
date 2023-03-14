@@ -127,7 +127,6 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             )
 
         # NOTE-JK: This is where the list of chids is added to the dataset from alndir
-        # NOTE-JK: As written, my alignment directory has
         if(alignment_index is not None):
             self._chain_ids = list(alignment_index.keys())
         else:
@@ -184,7 +183,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             for c in to_remove:
                 self._chain_ids.remove(c)
                 removed.append(c)
-        print(f'Skipping {len(removed)} SidechainNet entries: {removed[:5]}...')
+        if removed:
+            print(f'Skipping {len(removed)} SidechainNet entries: {removed[:5]}...')
                           
         # MOD-JK: Remove astral entries
         # _start = len(self._chain_ids)
@@ -249,6 +249,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         if self.overfit_single_batch:
             idx = 1
         name = self.idx_to_chain_id(idx)  # NOTE-JK: this is according to the names found in the alignment_dir
+        print(name)
         alignment_dir = os.path.join(self.alignment_dir, name)
 
         alignment_index = None
@@ -427,24 +428,15 @@ class OpenFoldDataset(torch.utils.data.Dataset):
         self.use_alphafold_sampling_procedure = use_alphafold_sampling_procedure
         if not self.use_alphafold_sampling_procedure:
             assert len(datasets) == 1, "Cannot use non-AlphaFold sampling procedure with multiple datasets."
-
-        def looped_shuffled_dataset_idx(dataset_len):
-            while True:
-                # Uniformly shuffle each dataset's indices
-                weights = [1. for _ in range(dataset_len)]
-                shuf = torch.multinomial(
-                    torch.tensor(weights),
-                    num_samples=dataset_len,
-                    replacement=False,
-                    generator=self.generator,
-                )
-                for idx in shuf:
-                    yield idx
+        if not self.use_alphafold_sampling_procedure and len(datasets[0]) != epoch_len:
+            print(f"Warning: non-AlphaFold sampling procedure with epoch_len != dataset "
+                  f"length. Using dataset length as epoch_len ({len(datasets[0])}).")
+            self.epoch_len = len(datasets[0])
 
         def looped_samples(dataset_idx):
             max_cache_len = int(epoch_len * probabilities[dataset_idx])
             dataset = self.datasets[dataset_idx]
-            idx_iter = looped_shuffled_dataset_idx(len(dataset))
+            idx_iter = self._looped_shuffled_dataset_idx(len(dataset))
             chain_data_cache = dataset.chain_data_cache
             while True:
                 weights = []
@@ -455,10 +447,12 @@ class OpenFoldDataset(torch.utils.data.Dataset):
                     chain_data_cache_entry = chain_data_cache[chain_id]
                     if(not deterministic_train_filter(chain_data_cache_entry)):
                         continue
-
-                    p = get_stochastic_train_filter_prob(
-                        chain_data_cache_entry,
-                    )
+                    if self.use_alphafold_sampling_procedure:
+                        p = get_stochastic_train_filter_prob(
+                            chain_data_cache_entry,
+                        )
+                    else:
+                        p = 1.
                     weights.append([1. - p, p])
                     idx.append(candidate_idx)
 
@@ -480,12 +474,8 @@ class OpenFoldDataset(torch.utils.data.Dataset):
             self.reroll()
 
     def __getitem__(self, idx):
-        if self.use_alphafold_sampling_procedure:
-            dataset_idx, datapoint_idx = self.datapoints[idx]
-            return self.datasets[dataset_idx][datapoint_idx]
-        else:
-            # MOD-JK: allow direct dataset access rather than sampling
-            return self.datasets[0][idx]
+        dataset_idx, datapoint_idx = self.datapoints[idx]
+        return self.datasets[dataset_idx][datapoint_idx]
 
     def __len__(self):
         if self.use_alphafold_sampling_procedure:
@@ -495,21 +485,39 @@ class OpenFoldDataset(torch.utils.data.Dataset):
             return len(self.datasets[0])
 
     def reroll(self):
-        # NOTE-JK: This selects the datasets to use
-        if not self.use_alphafold_sampling_procedure:
-            return
-        dataset_choices = torch.multinomial(
-            torch.tensor(self.probabilities),
-            num_samples=self.epoch_len,
-            replacement=True,
-            generator=self.generator,
-        )
+        if self.use_alphafold_sampling_procedure:
+            dataset_choices = torch.multinomial(
+                torch.tensor(self.probabilities),
+                num_samples=self.epoch_len,
+                replacement=True,
+                generator=self.generator,
+            )
+            self.datapoints = []
+            for dataset_idx in dataset_choices:
+                samples = self._samples[dataset_idx]
+                datapoint_idx = next(samples)
+                self.datapoints.append((dataset_idx, datapoint_idx))
+        else:
+            # Just shuffle the dataset indices. We only have a single dataset.
+            self.datapoints = []
+            dataset_idx = 0
+            index_list = self._looped_shuffled_dataset_idx(len(self.datasets[0]))
+            for i in range(self.epoch_len):
+                datapoint_idx = next(index_list)
+                self.datapoints.append((dataset_idx, datapoint_idx))
 
-        self.datapoints = []
-        for dataset_idx in dataset_choices:
-            samples = self._samples[dataset_idx]
-            datapoint_idx = next(samples)
-            self.datapoints.append((dataset_idx, datapoint_idx))
+    def _looped_shuffled_dataset_idx(self, dataset_len):
+        while True:
+            # Uniformly shuffle each dataset's indices
+            weights = [1. for _ in range(dataset_len)]
+            shuf = torch.multinomial(
+                torch.tensor(weights),
+                num_samples=dataset_len,
+                replacement=False,
+                generator=self.generator,
+            )
+            for idx in shuf:
+                yield idx
 
 
 class OpenFoldBatchCollator:
