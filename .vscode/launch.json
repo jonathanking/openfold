@@ -186,6 +186,65 @@
 
         },
         {
+            "name": "finetune OF nonscn data v3",
+            "type": "python",
+            "request": "launch",
+            "program": "/net/pulsar/home/koes/jok120/openfold/train_openfold.py",
+            "console": "integratedTerminal",
+
+            "args": [  // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
+                "data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/", // minimized scn files for training
+                "data/alignments/random10k_links/", // ALIGN_DIR, before making index
+                // "/scr/dbs/", // ALIGN_DIR, after making index; see --alignment_index_path
+                "data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/", // MMCIF_FILES
+                "out/experiments/230310/", // OUT_DIR
+                "2021-10-10",
+                "--template_release_dates_cache_path=data/caches/mmcif_cache_rodasnapshot.json",
+                "--train_chain_data_cache_path=data/caches/chain_data_cache_rodasnapshot.json",
+                "--obsolete_pdbs_file_path=data/obsolete_230310.dat",
+                "--resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt",
+                "--gpus=1",
+                "--checkpoint_every_epoch",
+                "--wandb",
+                "--wandb_project=finetune-openfold-02",
+                "--wandb_entity=koes-group",
+                "--precision=32",
+                "--resume_model_weights_only=True",
+                "--train_epoch_len=3",
+                "--max_epochs=500",
+                "--debug",
+                "--add_struct_metrics",
+                "--openmm_weight=1",
+                "--openmm_activation=None",
+                "--seed=1",
+                "--debug",
+                "--num_workers=1",
+                "--write_pdbs",
+                "--write_pdbs_every_n_steps=100",
+                "--log_every_n_steps=1",
+                "--config_preset=finetuning_sidechainnet",
+                // "--grad_clip_val=0.1",
+                "--violation_loss_weight=0",
+                "--scheduler_base_lr=0",
+                "--scheduler_warmup_no_steps=200",
+                // "--scheduler_max_lr=1e-6",
+                "--scheduler_max_lr=5e-4",
+                "--use_scn_pdb_names=False",
+                "--use_openmm=False",
+                "--use_alphafold_sampling=False",
+                "--wandb_tags='baseline,nonscn,debug'",
+                "--wandb_notes='debugging vscode'",
+                "--experiment=debugvscode-baseline",
+            ],
+            // "justMyCode": true,
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "WANDB_MODE": "offline"
+            }
+        },
+        {
             "name": "generate training chain data cache",
             "type": "python",
             "request": "launch",

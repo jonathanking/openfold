@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=cachetm
+#SBATCH --job-name=cache
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:0
 #SBATCH --ntasks-per-node=64
@@ -32,14 +32,15 @@ source scripts/activate_conda_env.sh
 echo "Using openfold data"
 TRAIN_STRUCTURES_DIR=data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
-TRAIN_CACHE_OUT=data/caches/chain_data_cache_rodasnapshot.json
+TRAIN_CACHE_OUT=data/caches/chain_data_cache_rodasnapshot_clustered.json
 TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
 
 ############################
 ##     Array Job Exec.    ##
 ############################
 echo "Generating training data cache..."
-python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACHE_OUT} --no_workers=${SLURM_NTASKS}	
+python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACHE_OUT} \
+    --cluster_file=clusters-by-entity-40.txt --no_workers=${SLURM_NTASKS}	
 echo "done."
 
 echo "Generating template data cache..."
