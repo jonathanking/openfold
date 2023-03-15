@@ -108,6 +108,19 @@ class OpenFoldWrapper(pl.LightningModule):
         self.last_lr_step = -1
 
         self.automatic_optimization = not self.config.model.disable_backwards
+    
+    def reinit_ema(self):
+        """Reinitialize EMA model weights using the current model weights.
+        
+        This is useful when we want to start a new training run with the same
+        model weights as a previous run. If the ema is not reinitialized, then upon
+        validation, the model will re-initialize its own weights with essentially
+        random/meaningless ema weights. This is especially relevant when validation_step
+        gets called before the start of training, but the model has weights loaded.
+        """
+        self.ema = ExponentialMovingAverage(
+            model=self.model, decay=self.config.ema.decay
+        )
 
     def forward(self, batch):
         return self.model(batch)
@@ -578,6 +591,7 @@ def main(args):
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
         model_module.load_state_dict(sd)
+        model_module.reinit_ema()  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.info("Successfully loaded model weights...")
     if(args.resume_from_jax_params):
         model_module.load_from_jax(args.resume_from_jax_params)
