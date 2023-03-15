@@ -14,6 +14,10 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.plugins.training_type import DeepSpeedPlugin, DDPPlugin
 from pytorch_lightning.plugins.environments import SLURMEnvironment
 import torch
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
+from deepspeed.ops.adam import DeepSpeedCPUAdam
 
 from openfold.config import model_config
 from openfold.data.data_modules import (
@@ -132,7 +136,9 @@ class OpenFoldWrapper(pl.LightningModule):
             )
 
         for k, v in other_metrics.items():
-            self.log(f"{phase}/{k}", v, on_step=True, on_epoch=True, logger=True)
+            if not train and k == "lddt_ca":
+                print(f"lddt_ca: {v.item()}")
+            self.log(f"{phase}/{k}", v, on_step=train, on_epoch=True, logger=True)
         
         if self.config.logging.log_to_csv:
             self._log_to_csv(batch, loss_breakdown, other_metrics, train=train)
@@ -173,7 +179,7 @@ class OpenFoldWrapper(pl.LightningModule):
         if batch['all_atom_positions'].sum() == 0:
             # TODO-JK: What happened here?
             print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
-            return
+            return torch.tensor(0., requires_grad=True, device=self.device)
 
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
@@ -191,7 +197,7 @@ class OpenFoldWrapper(pl.LightningModule):
         if outputs['final_atom_positions'].sum() == 0:
             # TODO-JK: What happened here?
             print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
-            return
+            return torch.tensor(0., requires_grad=True, device=self.device)
 
         # Compute loss
         if not self.config.model.disable_backwards:
@@ -415,17 +421,20 @@ class OpenFoldWrapper(pl.LightningModule):
         learning_rate: float = 1e-3,
         eps: float = 1e-5,
     ) -> torch.optim.Adam:
-#        return torch.optim.Adam(
-#            self.model.parameters(),
-#            lr=learning_rate,
-#            eps=eps
-#        )
-        # Ignored as long as a DeepSpeed optimizer is configured
-        optimizer = torch.optim.Adam(
-            self.model.parameters(), 
-            lr=learning_rate, 
-            eps=eps
-        )
+
+        if isinstance(self.trainer.training_type_plugin, DeepSpeedPlugin):
+            print("Initializing deepspeed optimizer.")
+            optimizer = DeepSpeedCPUAdam(
+                self.model.parameters(),
+                lr=learning_rate,
+                eps=eps
+            )
+        else:
+            optimizer = torch.optim.Adam(
+                self.model.parameters(),
+                lr=learning_rate,
+                eps=eps
+            )
 
         if self.last_lr_step != -1:
             for group in optimizer.param_groups:
@@ -437,15 +446,10 @@ class OpenFoldWrapper(pl.LightningModule):
             **self.config.scheduler
         )
 
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": lr_scheduler,
-                "interval": "step",
-                "name": "AlphaFoldLRScheduler",
-                "frequency": 1,
-            }
-        }
+        scheduler = {"scheduler": lr_scheduler, "interval": "step", "frequency": 1}
+
+        return [optimizer], [scheduler]
+
 
     def on_load_checkpoint(self, checkpoint):
         ema = checkpoint["ema"]
@@ -606,6 +610,7 @@ def main(args):
             notes=args.wandb_notes,
             tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
             resume=args.wandb_id if args.wandb_id else None,
+            group=args.experiment_name if args.experiment_name else "default_group",
             **{"entity": args.wandb_entity},
         )
         # MOD-JK: save config to wandb, log gradients/params
@@ -695,7 +700,19 @@ def main(args):
     else:
         ckpt_path = args.resume_from_ckpt
 
-    if args.trainer_mode == "fit":
+    if args.trainer_mode == "fit" and args.val_data_dir is not None:
+        # MOD-JK: validate before fit
+        trainer.validate(
+            model_module,
+            dataloaders=data_module.val_dataloader(), 
+            ckpt_path=ckpt_path,
+        )
+        trainer.fit(
+            model_module, 
+            datamodule=data_module,
+            ckpt_path=ckpt_path,
+        )
+    elif args.trainer_mode == "fit":
         trainer.fit(
             model_module, 
             datamodule=data_module,
