@@ -103,7 +103,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.cached_weights = None
         self.last_lr_step = -1
 
-        self.automatic_optimization = False
+        self.automatic_optimization = not self.config.model.disable_backwards
 
     def forward(self, batch):
         return self.model(batch)
@@ -166,8 +166,9 @@ class OpenFoldWrapper(pl.LightningModule):
             f.write("\n")
 
     def training_step(self, batch, batch_idx):
-        opt = self.optimizers()
-        opt.zero_grad()
+        if not self.automatic_optimization:
+            opt = self.optimizers()
+            opt.zero_grad()
 
         if batch['all_atom_positions'].sum() == 0:
             # TODO-JK: What happened here?
@@ -207,7 +208,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self._log(loss_breakdown, batch, outputs)
 
         # Backprop
-        if not self.config.model.disable_backwards:
+        if not self.config.model.disable_backwards and not self.automatic_optimization:
             self.manual_backward(loss)
             if self.config.model.grad_clip_val != 0:
                 torch.nn.utils.clip_grad_value_(
@@ -293,126 +294,121 @@ class OpenFoldWrapper(pl.LightningModule):
         )
    
         metrics["lddt_ca"] = lddt_ca_score
-   
-        drmsd_ca_score = drmsd(
-            pred_coords_masked_ca,
-            gt_coords_masked_ca,
-            mask=all_atom_mask_ca, # still required here to compute n
-        )
-        metrics["drmsd_ca"] = drmsd_ca_score
+
+        if batch["all_atom_positions"].shape[0] != 1:
+            metrics["lddt_ca"] = torch.mean(lddt_ca_score)
+
+        if batch["all_atom_positions"].shape[0] == 1:
+            # Doesn't work for batch size > 1
+            drmsd_ca_score = drmsd(
+                pred_coords_masked_ca,
+                gt_coords_masked_ca,
+                mask=all_atom_mask_ca, # still required here to compute n
+            )
+            metrics["drmsd_ca"] = drmsd_ca_score
 
         if (superimposition_metrics and self.config.loss.openmm.add_struct_metrics):
             # Original code (alpha-code analysis)
-            superimposed_pred, alignment_rmsd = superimpose(
-                gt_coords_masked_ca,
-                pred_coords_masked_ca,
-                all_atom_mask_ca,
-            )
-            gdt_ts_score = gdt_ts(superimposed_pred, gt_coords_masked_ca,
-                                  all_atom_mask_ca)
-            gdt_ha_score = gdt_ha(superimposed_pred, gt_coords_masked_ca,
-                                  all_atom_mask_ca)
-            metrics["rmsd_ca"] = alignment_rmsd
-            metrics["gdtts_ca"] = gdt_ts_score
-            metrics["gdtha_ca"] = gdt_ha_score
+            try:
+                superimposed_pred, alignment_rmsd = superimpose(
+                    gt_coords_masked_ca,
+                    pred_coords_masked_ca,
+                    all_atom_mask_ca,
+                )
+                gdt_ts_score = gdt_ts(superimposed_pred, gt_coords_masked_ca,
+                                    all_atom_mask_ca)
+                gdt_ha_score = gdt_ha(superimposed_pred, gt_coords_masked_ca,
+                                    all_atom_mask_ca)
+                metrics["rmsd_ca"] = alignment_rmsd
+                metrics["gdtts_ca"] = gdt_ts_score
+                metrics["gdtha_ca"] = gdt_ha_score
 
-            # MOD-JK heavily added code, only supports batch size of one at the moment
-            assert gt_coords.shape[
-                0] == 1, "Structure metrics only supported for batchsize of 1."
+                if gt_coords.shape[0] != 1:
+                    metrics["rmsd_ca"] = torch.mean(alignment_rmsd)
 
-            # Create our superimposed and de-padded all-atom variables for analysis
-            flat_gt = gt_coords_masked.reshape(gt_coords.shape[0], -1, 3)
-            flat_pred = pred_coords_masked.reshape(pred_coords.shape[0], -1, 3)
-            flat_all_atom_mask = all_atom_mask.reshape(all_atom_mask.shape[0], -1)
+                # MOD-JK heavily added code, only supports batch size of one at the moment
+                if gt_coords.shape[0] == 1:
+                    # Create our superimposed and de-padded all-atom variables for analysis
+                    flat_gt = gt_coords_masked.reshape(gt_coords.shape[0], -1, 3)
+                    flat_pred = pred_coords_masked.reshape(pred_coords.shape[0], -1, 3)
+                    flat_all_atom_mask = all_atom_mask.reshape(all_atom_mask.shape[0], -1)
 
-            flat_gt_unpadded = flat_gt[flat_all_atom_mask.bool()]
-            flat_pred_unpadded = flat_pred[flat_all_atom_mask.bool()]
-            flat_gt_unpadded_np = flat_gt_unpadded.cpu().numpy()
-            flat_pred_unpadded_np = flat_pred_unpadded.cpu().numpy()
+                    flat_gt_unpadded = flat_gt[flat_all_atom_mask.bool()]
+                    flat_pred_unpadded = flat_pred[flat_all_atom_mask.bool()]
+                    flat_gt_unpadded_np = flat_gt_unpadded.cpu().numpy()
+                    flat_pred_unpadded_np = flat_pred_unpadded.cpu().numpy()
 
-            # >>> All-atom RMSD
-            flat_superimposed_pred_aa, rmsd_all = superimpose(flat_gt, flat_pred,
-                                                              flat_all_atom_mask)
-            metrics["rmsd_aa"] = rmsd_all
-            flat_superimposed_pred_aa_unpadded_np = flat_superimposed_pred_aa[
-                flat_all_atom_mask.bool()].cpu().numpy()
+                    # >>> All-atom RMSD
+                    flat_superimposed_pred_aa, rmsd_all = superimpose(flat_gt, flat_pred,
+                                                                    flat_all_atom_mask)
+                    metrics["rmsd_aa"] = rmsd_all
+                    flat_superimposed_pred_aa_unpadded_np = flat_superimposed_pred_aa[
+                        flat_all_atom_mask.bool()].cpu().numpy()
 
-            # >>> Global Metrics (GDC_all, TM score)
-            gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
-                                           flat_superimposed_pred_aa_unpadded_np,
-                                           skip_alignment=True,
-                                           as_percent=False)
-            tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
-                                             flat_superimposed_pred_aa_unpadded_np,
-                                             skip_alignment=True)
-            tmscore_ca = scn_losses.tm_score(
-                gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
-                superimposed_pred[all_atom_mask_ca.bool()].cpu().numpy(),
-                skip_alignment=True)
+                    # >>> Global Metrics (GDC_all, TM score)
+                    gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
+                                                flat_superimposed_pred_aa_unpadded_np,
+                                                skip_alignment=True,
+                                                as_percent=False)
+                    tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
+                                                    flat_superimposed_pred_aa_unpadded_np,
+                                                    skip_alignment=True)
+                    tmscore_ca = scn_losses.tm_score(
+                        gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+                        superimposed_pred[all_atom_mask_ca.bool()].cpu().numpy(),
+                        skip_alignment=True)
 
-            # >>> Local Metrics (DRMSD, LDDT, no alignment required)
-            # NOTE-JK: I don't think OpenFold supports all-atom lddt (requires measuring
-            # dists only between atoms in different residues). I use SCN's value instead.
-            drmsd_aa = scn_losses.drmsd(flat_gt_unpadded, flat_pred_unpadded)
-            lddt_aa = scn_losses.lddt_all(
-                flat_gt.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
-                flat_pred.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
-                atom_mask=all_atom_mask.reshape(-1).bool(),
-                residue_shape=gt_coords.shape[-1],
-                cutoff=15)
-            lddtquasi_aa = scn_losses.quasi_lddt_all(flat_gt_unpadded,
-                                                     flat_pred_unpadded,
-                                                     cutoff=15)
+                    # >>> Local Metrics (DRMSD, LDDT, no alignment required)
+                    # NOTE-JK: I don't think OpenFold supports all-atom lddt (requires measuring
+                    # dists only between atoms in different residues). I use SCN's value instead.
+                    drmsd_aa = scn_losses.drmsd(flat_gt_unpadded, flat_pred_unpadded)
+                    lddt_aa = scn_losses.lddt_all(
+                        flat_gt.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                        flat_pred.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                        atom_mask=all_atom_mask.reshape(-1).bool(),
+                        residue_shape=gt_coords.shape[-1],
+                        cutoff=15)
+                    lddtquasi_aa = scn_losses.quasi_lddt_all(flat_gt_unpadded,
+                                                            flat_pred_unpadded,
+                                                            cutoff=15)
 
-            metrics["gdcall_aa"] = gdcall_aa
-            metrics["tmscore_aa"] = tmscore_aa
-            metrics["tmscore_ca"] = tmscore_ca
-            metrics["drmsd_aa"] = drmsd_aa
-            metrics["lddt_aa"] = lddt_aa
-            metrics["lddtquasi_aa"] = lddtquasi_aa
+                    metrics["gdcall_aa"] = gdcall_aa
+                    metrics["tmscore_aa"] = tmscore_aa
+                    metrics["tmscore_ca"] = tmscore_ca
+                    metrics["drmsd_aa"] = drmsd_aa
+                    metrics["lddt_aa"] = lddt_aa
+                    metrics["lddtquasi_aa"] = lddtquasi_aa
 
-            # The below measurements were used to compare sidechainnet's metrics vs OF's
-            # Because they all matched what OpenFold computes, they are not computed again
-            show_scn_metrics = False
-            if show_scn_metrics:
-                # 1. SCN only rmsd (does alignment)
-                alignment_rmsd_scn1 = scn_losses.rmsd(flat_gt_unpadded_np,
-                                                      flat_pred_unpadded_np)
-                # 2. SCN assisted rmsd (uses openfold's alignment)
-                alignment_rmsd_scn2 = scn_losses.rmsd(
-                    flat_gt_unpadded_np,
-                    flat_superimposed_pred_aa[flat_all_atom_mask.bool()].cpu().numpy())
-                # 3. SCN only rmsd_ca (does alignment)
-                alignment_rmsd_scn1_ca = scn_losses.rmsd(
-                    gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
-                    pred_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy())
-                drmsd_ca_scn = scn_losses.drmsd(
-                    gt_coords_masked_ca[all_atom_mask_ca.bool()],
-                    pred_coords_masked_ca[all_atom_mask_ca.bool()])
-                lddt_ca_scn = scn_losses.quasi_lddt_all(
-                    gt_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
-                    pred_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
-                    cutoff=15)
-                metrics['rmsdscn1_aa'] = alignment_rmsd_scn1
-                metrics['rmsdscn2_aa'] = alignment_rmsd_scn2
-                metrics['rmsdscn1_ca'] = alignment_rmsd_scn1_ca
-                metrics["drmsd_ca_scn"] = drmsd_ca_scn
-                metrics["lddt_ca_scn"] = lddt_ca_scn
+                    # The below measurements were used to compare sidechainnet's metrics vs OF's
+                    # Because they all matched what OpenFold computes, they are not computed again
+                    show_scn_metrics = False
+                    if show_scn_metrics:
+                        # 1. SCN only rmsd (does alignment)
+                        alignment_rmsd_scn1 = scn_losses.rmsd(flat_gt_unpadded_np,
+                                                            flat_pred_unpadded_np)
+                        # 2. SCN assisted rmsd (uses openfold's alignment)
+                        alignment_rmsd_scn2 = scn_losses.rmsd(
+                            flat_gt_unpadded_np,
+                            flat_superimposed_pred_aa[flat_all_atom_mask.bool()].cpu().numpy())
+                        # 3. SCN only rmsd_ca (does alignment)
+                        alignment_rmsd_scn1_ca = scn_losses.rmsd(
+                            gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+                            pred_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy())
+                        drmsd_ca_scn = scn_losses.drmsd(
+                            gt_coords_masked_ca[all_atom_mask_ca.bool()],
+                            pred_coords_masked_ca[all_atom_mask_ca.bool()])
+                        lddt_ca_scn = scn_losses.quasi_lddt_all(
+                            gt_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
+                            pred_coords_masked_ca[all_atom_mask_ca.bool()].reshape(-1, 3),
+                            cutoff=15)
+                        metrics['rmsdscn1_aa'] = alignment_rmsd_scn1
+                        metrics['rmsdscn2_aa'] = alignment_rmsd_scn2
+                        metrics['rmsdscn1_ca'] = alignment_rmsd_scn1_ca
+                        metrics["drmsd_ca_scn"] = drmsd_ca_scn
+                        metrics["lddt_ca_scn"] = lddt_ca_scn
 
-            # The below are deprecated fn calls that compute the metrics via realignment
-            # but are skipped to avoid the overhead of realignment
-            # gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
-            #                                flat_pred_unpadded_np,
-            #                                skip_alignment=False,
-            #                                as_percent=False)
-            # tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
-            #                                  flat_pred_unpadded_np,
-            #                                  skip_alignment=False)
-            # tmscore_ca = scn_losses.tm_score(
-            #     gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
-            #     pred_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
-            #     skip_alignment=False)
-
+            except ZeroDivisionError:
+                pass
         return metrics
 
     def configure_optimizers(self, 
@@ -535,6 +531,9 @@ def update_experimental_config(config, args):
         config.scheduler.warmup_no_steps = args.scheduler_warmup_no_steps
     if args.scheduler_base_lr is not None:
         config.scheduler.base_lr = args.scheduler_base_lr
+    if args.batch_size != config.data.data_module.data_loaders.batch_size:
+        config.data.data_module.data_loaders.batch_size = args.batch_size
+        print("Overwriting batch size to", args.batch_size)
 
 
 
@@ -596,22 +595,43 @@ def main(args):
 
     data_module.prepare_data()
     data_module.setup()
+
+    loggers = []
+    if(args.wandb):
+        wdb_logger = WandbLogger(
+            name=args.experiment_name,
+            save_dir=args.output_dir,
+            id=args.wandb_id,
+            project=args.wandb_project,
+            notes=args.wandb_notes,
+            tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
+            resume=args.wandb_id if args.wandb_id else None,
+            **{"entity": args.wandb_entity},
+        )
+        # MOD-JK: save config to wandb, log gradients/params
+        wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
+        loggers.append(wdb_logger)
+        print("Experiment dir:", wdb_logger.experiment.dir)
     
     callbacks = []
     if args.checkpoint_every_n_train_steps is not None:
+        print("Checkpointing every", args.checkpoint_every_n_train_steps, "train steps.")
         mc = ModelCheckpoint(
             every_n_train_steps=args.checkpoint_every_n_train_steps,
             auto_insert_metric_name=False,
             save_top_k=1,
-            monitor="train/loss"
+            monitor="train/loss",
+            dirpath=wdb_logger.experiment.dir if args.wandb else None
         )
         callbacks.append(mc)
     elif(args.checkpoint_every_epoch):
+        print("Checkpointing every epoch.")
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
             save_top_k=1,
-            monitor="train/loss"
+            monitor="train/loss",
+            dirpath=wdb_logger.experiment.dir if args.wandb else None
         )
         callbacks.append(mc)
 
@@ -639,21 +659,6 @@ def main(args):
         lr_monitor = LearningRateMonitor(logging_interval="step")
         callbacks.append(lr_monitor)
 
-    loggers = []
-    if(args.wandb):
-        wdb_logger = WandbLogger(
-            name=args.experiment_name,
-            save_dir=args.output_dir,
-            id=args.wandb_id,
-            project=args.wandb_project,
-            notes=args.wandb_notes,
-            tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
-            resume=args.wandb_id if args.wandb_id else None,
-            **{"entity": args.wandb_entity},
-        )
-        # MOD-JK: save config to wandb, log gradients/params
-        wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
-        loggers.append(wdb_logger)
 
     if(args.deepspeed_config_path is not None):
         strategy = DeepSpeedPlugin(
@@ -715,8 +720,9 @@ def bool_type(bool_str: str):
     else:
         raise ValueError(f'Cannot interpret {bool_str} as bool')
 
-def int_or_none_type(int_str: str):
-    if int_str.lower() == "none":
+
+def int_or_none_type(int_str):
+    if int_str is None or int_str.lower() == "none":
         return None
     else:
         return int(int_str)
@@ -1057,9 +1063,13 @@ if __name__ == "__main__":
                         default=0,
                         help="Value for clipping gradients.")
     parser.add_argument("--checkpoint_every_n_train_steps",
-                        type=int,
-                        default=1000,
+                        type=int_or_none_type,
+                        default=None,
                         help="Number of steps after which to checkpoint the model.")
+    parser.add_argument("--batch_size",
+                        type=int,
+                        default=1,
+                        help="Batch size to use for training.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

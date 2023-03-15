@@ -1359,7 +1359,7 @@ def violation_loss(
         + l_clash
     )
 
-    return loss
+    return torch.sum(loss)
 
 
 def compute_renamed_ground_truth(
@@ -1482,7 +1482,11 @@ def experimentally_resolved_loss(
 ) -> torch.Tensor:
     errors = sigmoid_cross_entropy(logits, all_atom_mask)
     loss = torch.sum(errors * atom37_atom_exists, dim=-1)
-    loss = loss / (eps + torch.sum(atom37_atom_exists, dim=(-1, -2)))
+    # MOD-JK: An attempt to support batch > 1
+    if atom37_atom_exists.shape[0] == 1:
+        loss = loss / (eps + torch.sum(atom37_atom_exists, dim=(-1, -2)))
+    else:
+        loss = loss / (eps + torch.sum(atom37_atom_exists, dim=(-1, -2, -3)))
     loss = torch.sum(loss, dim=-1)
     
     loss = loss * (
