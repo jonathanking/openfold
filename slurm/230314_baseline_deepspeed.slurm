@@ -77,7 +77,6 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --wandb_note="Baseline. MULTI GPU. Violation loss on. DeepSpeed. Trying to mimic OpenFold. Gradient accumulation effective size=32. Added val data." \
     --log_to_csv=False \
     --num_sanity_val_steps=0 \
-    --checkpoint_every_n_train_steps=500
 
     
 
