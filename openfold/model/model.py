@@ -499,6 +499,7 @@ class AlphaFold(nn.Module):
             # Select the features for the current recycling cycle
             fetch_cur_batch = lambda t: t[..., cycle_no]
             # MOD-JK: don't process names, not a tensor
+            use_name = False
             if "name" in batch:
                 use_name = True
                 names = batch.pop("name")
