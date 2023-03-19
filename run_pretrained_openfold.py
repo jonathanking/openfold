@@ -332,6 +332,16 @@ def main(args):
                 logger.info(f"Model output written to {output_dict_path}...")
 
 
+def bool_type(bool_str: str):
+    bool_str_lower = bool_str.lower()
+    if bool_str_lower in ('false', 'f', 'no', 'n', '0'):
+        return False
+    elif bool_str_lower in ('true', 't', 'yes', 'y', '1'):
+        return True
+    else:
+        raise ValueError(f'Cannot interpret {bool_str} as bool')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -375,7 +385,7 @@ if __name__ == "__main__":
              checkpoint directory or a .pt file"""
     )
     parser.add_argument(
-        "--save_outputs", action="store_true", default=False,
+        "--save_outputs", type=bool_type, default=False,
         help="Whether to save all model outputs, including embeddings, etc."
     )
     parser.add_argument(
@@ -394,25 +404,25 @@ if __name__ == "__main__":
         "--data_random_seed", type=str, default=None
     )
     parser.add_argument(
-        "--skip_relaxation", action="store_true", default=False,
+        "--skip_relaxation", type=bool_type, default=False,
     )
     parser.add_argument(
         "--multimer_ri_gap", type=int, default=200,
         help="""Residue index offset between multiple sequences, if provided"""
     )
     parser.add_argument(
-        "--trace_model", action="store_true", default=False,
+        "--trace_model", type=bool_type, default=False,
         help="""Whether to convert parts of each model to TorchScript.
                 Significantly improves runtime at the cost of lengthy
                 'compilation.' Useful for large batch jobs."""
     )
     parser.add_argument(
-        "--subtract_plddt", action="store_true", default=False,
+        "--subtract_plddt", type=bool_type, default=False,
         help=""""Whether to output (100 - pLDDT) in the B-factor column instead
                  of the pLDDT itself"""
     )
     parser.add_argument(
-        "--long_sequence_inference", action="store_true", default=False,
+        "--long_sequence_inference", type=bool_type, default=False,
         help="""enable options to reduce memory usage at the cost of speed, helps longer sequences fit into GPU memory, see the README for details"""
     )
     add_data_args(parser)
