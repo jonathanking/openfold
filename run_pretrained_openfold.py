@@ -402,7 +402,7 @@ if __name__ == "__main__":
         help="""Postfix for output prediction filenames"""
     )
     parser.add_argument(
-        "--data_random_seed", type=str, default=None
+        "--data_random_seed", type=int, default=None
     )
     parser.add_argument(
         "--skip_relaxation", type=bool_type, default=False,
