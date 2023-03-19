@@ -718,11 +718,12 @@ def main(args):
 
     if args.trainer_mode == "fit" and args.val_data_dir is not None:
         # MOD-JK: validate before fit
-        trainer.validate(
-            model_module,
-            dataloaders=data_module.val_dataloader(), 
-            ckpt_path=ckpt_path,
-        )
+        if args.run_validate_first:
+            trainer.validate(
+                model_module,
+                dataloaders=data_module.val_dataloader(), 
+                ckpt_path=ckpt_path,
+            )
         trainer.fit(
             model_module, 
             datamodule=data_module,
@@ -1103,6 +1104,10 @@ if __name__ == "__main__":
                         type=int,
                         default=1,
                         help="Batch size to use for training.")
+    parser.add_argument("--run_validate_first",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to run validation before training.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

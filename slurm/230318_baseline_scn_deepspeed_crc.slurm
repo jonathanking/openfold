@@ -64,7 +64,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_activation=None \
     --seed=0 \
     --debug \
-    --num_workers=6 \
+    --num_workers=4 \
     --write_pdbs \
     --write_pdbs_every_n_steps=100 \
     --log_every_n_steps=1 \
@@ -82,7 +82,8 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --use_scn_pdb_names=True \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
-    --openmm_modified_sigmoid=5,1000000,300000,5
+    --openmm_modified_sigmoid=5,1000000,300000,5 \
+    --run_validate_first=False
 
 
     
