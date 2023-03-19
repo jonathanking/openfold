@@ -200,9 +200,10 @@ def main(args):
 
     if args.use_meta_fasta_file is not None:
         tag_list, seq_list = _custom_load_meta_fasta_file(args.use_meta_fasta_file)
+        tag_list, seq_list = tag_list[:args.limit], seq_list[:args.limit]
     else:
         for fasta_file in tqdm(
-                list_files_with_extensions(args.fasta_dir, (".fasta", ".fa"))):
+                list_files_with_extensions(args.fasta_dir, (".fasta", ".fa")[:args.limit])):
             # Gather input sequences
             with open(os.path.join(args.fasta_dir, fasta_file), "r") as fp:
                 data = fp.read()
@@ -425,6 +426,7 @@ if __name__ == "__main__":
         "--long_sequence_inference", type=bool_type, default=False,
         help="""enable options to reduce memory usage at the cost of speed, helps longer sequences fit into GPU memory, see the README for details"""
     )
+    parser.add_argument("--limit", type=int, default=None, help="limit the number of sequences to run.")
     add_data_args(parser)
     args = parser.parse_args()
 
