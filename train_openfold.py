@@ -640,7 +640,7 @@ def main(args):
             auto_insert_metric_name=False,
             save_top_k=1,
             monitor="train/loss",
-            dirpath=wdb_logger.experiment.dir if args.wandb else None,
+            # dirpath=wdb_logger.experiment.dir if args.wandb else None,
             verbose=True
         )
         callbacks.append(mc)
@@ -649,9 +649,9 @@ def main(args):
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
-            save_top_k=1,
+            save_top_k=-1,
             monitor="train/loss",
-            dirpath=wdb_logger.experiment.dir if args.wandb else None,
+            # dirpath=wdb_logger.experiment.dir if args.wandb else None,
             verbose=True
         )
         callbacks.append(mc)
