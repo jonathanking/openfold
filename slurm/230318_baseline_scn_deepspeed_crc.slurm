@@ -64,7 +64,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_activation=None \
     --seed=0 \
     --debug \
-    --num_workers=7 \
+    --num_workers=6 \
     --write_pdbs \
     --write_pdbs_every_n_steps=100 \
     --log_every_n_steps=1 \
