@@ -499,9 +499,12 @@ class AlphaFold(nn.Module):
             # Select the features for the current recycling cycle
             fetch_cur_batch = lambda t: t[..., cycle_no]
             # MOD-JK: don't process names, not a tensor
-            names = batch.pop("name")
+            if "name" in batch:
+                use_name = True
+                names = batch.pop("name")
             feats = tensor_tree_map(fetch_cur_batch, batch)
-            batch["name"] = names
+            if use_name:
+                batch["name"] = names
 
             # Enable grad iff we're training and it's the final recycling layer
             is_final_iter = cycle_no == (num_iters - 1)
