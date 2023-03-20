@@ -1158,7 +1158,7 @@ if __name__ == "__main__":
     remove_arguments(
         parser, 
         [
-            "--accelerator", 
+            # "--accelerator", 
             "--resume_from_checkpoint",
             "--reload_dataloaders_every_epoch",
             "--reload_dataloaders_every_n_epochs",
