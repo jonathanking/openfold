@@ -2,7 +2,6 @@
 #SBATCH --job-name=3ofwarmup
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
-#SBATCH --ntasks-per-node=64
 #SBATCH --time=6-00:00:00
 #SBATCH --partition=a100_multi
 #SBATCH --qos=long
@@ -10,6 +9,8 @@
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=8
 
 ############################
 ##       Description      ##
