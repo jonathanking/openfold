@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=2ofwarmup
+#SBATCH --job-name=3ofwarmup
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=64
-#SBATCH --time=1-00:00:00
-#SBATCH --partition=a100
-#SBATCH --qos=short
+#SBATCH --time=6-00:00:00
+#SBATCH --partition=a100_multi
+#SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -15,8 +15,9 @@
 ##       Description      ##
 ############################
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
-echo "Baseline exp 2 on SidechainNet data, but better checkpointing, etc. Will try auto-resubmit."
+echo "Baseline exp 2 on SidechainNet data, but better checkpointing, etc."
 echo "Also tries to warmup OpenMM. 4 gpus x 2 nodes."
+echo "Uses openmm loss."
 
 ############################
 ##       Environment      ##
@@ -29,7 +30,7 @@ module load gcc/8.2.0
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/230320_warmup/
+OUTDIR=out/experiments/230320_warmup3/
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
@@ -78,9 +79,9 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --use_scn_pdb_names=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment=baseline-scnmin-04-warmup  \
+    --experiment=baseline-scnmin-05-warmup  \
     --wandb_tags="baseline,scn,omm-warmup" \
-    --wandb_note="Baseline on scn. OMM warmup over 1k steps." \
+    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100_multi." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
