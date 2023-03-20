@@ -715,19 +715,26 @@ def main(args):
     # from pytorch_lightning.profiler import AdvancedProfiler
     # profiler = AdvancedProfiler(dirpath=".", filename="perf_logs03")
 
-    my_plugins = []
-    if(args.auto_slurm_resubmit):
-        my_plugins.append(SLURMEnvironment())
 
-    trainer = pl.Trainer.from_argparse_args(
-        args,
-        default_root_dir=args.output_dir,
-        strategy=strategy,
-        callbacks=callbacks,
-        logger=loggers,
-        plugins=my_plugins,
-        # profiler="simple",
-    )
+    if args.auto_slurm_resubmit:
+        trainer = pl.Trainer.from_argparse_args(
+            args,
+            default_root_dir=args.output_dir,
+            strategy=strategy,
+            callbacks=callbacks,
+            logger=loggers,
+            plugins=[SLURMEnvironment()],
+            # profiler="simple",
+        )
+    else:
+        trainer = pl.Trainer.from_argparse_args(
+            args,
+            default_root_dir=args.output_dir,
+            strategy=strategy,
+            callbacks=callbacks,
+            logger=loggers,
+            # profiler="simple",
+        )
 
     if(args.resume_model_weights_only):
         ckpt_path = None
