@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ofwarmup
+#SBATCH --job-name=2ofwarmup
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=64
@@ -10,7 +10,6 @@
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --signal=SIGUSR1@90
 
 ############################
 ##       Description      ##
@@ -86,7 +85,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
     --run_validate_first=True \
-    --auto_slurm_resubmit=True \
+    --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000
 
