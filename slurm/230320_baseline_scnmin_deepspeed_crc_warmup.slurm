@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=3ofwarmup
-#SBATCH --nodes=2
+#SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --time=6-00:00:00
 #SBATCH --partition=a100_multi
@@ -17,7 +17,7 @@
 ############################
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Baseline exp 2 on SidechainNet data, but better checkpointing, etc."
-echo "Also tries to warmup OpenMM. 4 gpus x 2 nodes."
+echo "Also tries to warmup OpenMM. 4 gpus x 1 nodes."
 echo "Uses openmm loss."
 
 ############################
@@ -53,9 +53,9 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --gpus=4 \
-    --num_nodes=2 \
+    --num_nodes=1 \
     --batch_size=1 \
-    --accumulate_grad_batches=16 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
