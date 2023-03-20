@@ -54,6 +54,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --gpus=4 \
     --num_nodes=4 \
     --devices=16 \
+    --accelerator='gpu' \
     --batch_size=1 \
     --accumulate_grad_batches=8 \
     --checkpoint_every_epoch \
