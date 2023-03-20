@@ -2,9 +2,9 @@
 #SBATCH --job-name=6ofwarmup
 #SBATCH --nodes=4
 #SBATCH --gres=gpu:4
-#SBATCH --time=6-00:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --partition=a100_multi
-#SBATCH --qos=long
+#SBATCH --qos=short
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -60,7 +60,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=2000 \
+    --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
