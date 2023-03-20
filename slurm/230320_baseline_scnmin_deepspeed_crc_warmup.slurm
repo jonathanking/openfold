@@ -41,7 +41,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
-./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
+srun ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
@@ -59,7 +59,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=1000 \
+    --train_epoch_len=2000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
