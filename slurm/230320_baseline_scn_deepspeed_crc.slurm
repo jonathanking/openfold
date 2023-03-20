@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=64
 #SBATCH --time=1-00:00:00
-#SBATCH --partition=a100
+#SBATCH --partition=a100_multi
 #SBATCH --qos=short
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
