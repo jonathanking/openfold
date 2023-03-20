@@ -43,7 +43,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
-srun /ihome/dkoes/jok120/openfold/lib/conda/envs/openfold_venv/bin/python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
+./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
