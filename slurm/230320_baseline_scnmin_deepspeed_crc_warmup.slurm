@@ -51,7 +51,6 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --obsolete_pdbs_file_path=data/obsolete_230310.dat \
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
-    --gpus=4 \
     --num_nodes=4 \
     --devices=16 \
     --accelerator='gpu' \
