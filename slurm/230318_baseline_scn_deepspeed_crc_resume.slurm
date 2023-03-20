@@ -10,6 +10,7 @@
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
+#SBATCH --signal=SIGUSR1@90
 
 ############################
 ##       Description      ##
@@ -83,7 +84,8 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
-    --run_validate_first=False
+    --run_validate_first=False \
+    --auto_slurm_resubmit = True \
 
 
     
