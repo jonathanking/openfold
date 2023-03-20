@@ -677,7 +677,9 @@ config = mlc.ConfigDict(
                 "squashed_loss": False,
                 "squashed_loss_factor": 100.0,
                 "modified_sigmoid": False,
-                "modified_sigmoid_params": (1,1,1,1)
+                "modified_sigmoid_params": (1,1,1,1),
+                "use_openmm_warmup": False,
+                "openmm_warmup_steps": 1000,
             },
         },
         "ema": {"decay": 0.999},

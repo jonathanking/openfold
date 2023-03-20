@@ -56,6 +56,7 @@ from scripts.zero_to_fp32 import (
 from openfold.utils.logger import PerformanceLoggingCallback
 
 import sidechainnet.examples.losses as scn_losses
+from sidechainnet.research.openfold.openfold_loss import OpenMMLR
 import wandb
 
 from tqdm import tqdm
@@ -99,8 +100,12 @@ class OpenFoldWrapper(pl.LightningModule):
     def __init__(self, config):
         super(OpenFoldWrapper, self).__init__()
         self.config = config
+        if config.loss.openmm.use_openmm_warmup:
+            self.openmm_scheduler = OpenMMLR(steps=config.loss.openmm.openmm_warmup_steps)
+        else:
+            self.openmm_scheduler = None
         self.model = AlphaFold(config)
-        self.loss = AlphaFoldLoss(config.loss)
+        self.loss = AlphaFoldLoss(config.loss, self.openmm_scheduler)
         self.ema = ExponentialMovingAverage(
             model=self.model, decay=config.ema.decay
         )
@@ -236,6 +241,9 @@ class OpenFoldWrapper(pl.LightningModule):
                 )
             opt.step()
             self.lr_schedulers().step()
+        
+        if self.openmm_scheduler is not None:
+            self.openmm_scheduler.step()
 
         return loss
 
@@ -510,6 +518,10 @@ def update_openmm_config(config, args):
         config.loss.openmm.modified_sigmoid = True
         A, B, C, D = map(float, args.openmm_modified_sigmoid.split(","))
         config.loss.openmm.modified_sigmoid_params = (A, B, C, D)
+    if args.use_openmm_warmup:
+        config.loss.openmm.use_openmm_warmup = True
+    if args.openmm_warmup_steps is not None:
+        config.loss.openmm.openmm_warmup_steps = args.openmm_warmup_steps
 
 
 def update_experimental_config(config, args):
@@ -1117,7 +1129,16 @@ if __name__ == "__main__":
     parser.add_argument("--auto_slurm_resubmit",
                         type=bool_type,
                         default=False,
-                        help="Whether to automatically resubmit the job via slurm when it ends.")
+                        help="Whether to automatically resubmit the job via slurm.")
+    parser.add_argument("--use_openmm_warmup",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to use OpenMM LR warmup. Scales the value of OpenMM"
+                             " linearly from 1e-4 to 1 over 1000 steps..")
+    parser.add_argument("--openmm_warmup_steps",
+                        type=int,
+                        default=1000,
+                        help="Number of steps to warmup OpenMM.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

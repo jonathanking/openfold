@@ -1533,10 +1533,11 @@ def masked_msa_loss(logits, true_msa, bert_mask, eps=1e-8, **kwargs):
 
 class AlphaFoldLoss(nn.Module):
     """Aggregation of the various losses described in the supplement"""
-    def __init__(self, config):
+    def __init__(self, config, openmm_scheduler):
         super(AlphaFoldLoss, self).__init__()
         self.config = config
         self.struct_idx = 0
+        self._openmm_scheduler = openmm_scheduler
 
     def forward(self, out, batch, _return_breakdown=False):
         if "violation" not in out.keys():
@@ -1612,6 +1613,8 @@ class AlphaFoldLoss(nn.Module):
         for loss_name, loss_fn in loss_fns.items():
             weight = self.config[loss_name].weight
             if loss_name == "openmm":
+                openmm_lr_modifier = self._openmm_scheduler.get_lr() if self._openmm_scheduler is not None else 1.0
+                weight = weight * openmm_lr_modifier
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
