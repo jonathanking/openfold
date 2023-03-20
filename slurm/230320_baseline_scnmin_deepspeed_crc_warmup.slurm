@@ -26,6 +26,8 @@ source scripts/activate_conda_env.sh
 module load cuda/11.3.0
 module load gcc/8.2.0
 
+export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
+
 
 ############################
 ##     Array Job Exec.    ##
