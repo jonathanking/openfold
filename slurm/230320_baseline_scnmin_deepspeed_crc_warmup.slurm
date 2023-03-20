@@ -9,7 +9,7 @@
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=16
 
 ############################
 ##       Description      ##
@@ -53,6 +53,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --gpus=4 \
     --num_nodes=4 \
+    --devices=16 \
     --batch_size=1 \
     --accumulate_grad_batches=8 \
     --checkpoint_every_epoch \
