@@ -52,6 +52,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --gpus=4 \
+    --num_nodes=4 \
     --batch_size=1 \
     --accumulate_grad_batches=8 \
     --checkpoint_every_epoch \
