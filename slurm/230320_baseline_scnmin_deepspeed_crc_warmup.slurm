@@ -9,7 +9,7 @@
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=64
 
 ############################
 ##       Description      ##
@@ -68,7 +68,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_activation=None \
     --seed=0 \
     --debug \
-    --num_workers=2 \
+    --num_workers=4 \
     --write_pdbs \
     --write_pdbs_every_n_steps=200 \
     --log_every_n_steps=1 \
@@ -80,7 +80,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --use_scn_pdb_names=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment=baseline-scnmin-05-warmup  \
+    --experiment=baseline-scnmin-07-warmup  \
     --wandb_tags="baseline,scn,omm-warmup" \
     --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100_multi." \
     --log_to_csv=False \
