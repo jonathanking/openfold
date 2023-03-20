@@ -16,7 +16,7 @@
 ##       Description      ##
 ############################
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
-echo "Baseline on AlphaFold data, but better checkpointing, etc. Will auto-resubmit."
+echo "Baseline on AlphaFold data, but better checkpointing, etc. Will try auto-resubmit."
 
 ############################
 ##       Environment      ##
@@ -58,7 +58,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=2000 \
+    --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \

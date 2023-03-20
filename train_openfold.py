@@ -717,7 +717,7 @@ def main(args):
 
     my_plugins = []
     if(args.auto_slurm_resubmit):
-        my_plugins.append(SLURMEnvironment(requeue_signal=signal.SIGUSR1))
+        my_plugins.append(SLURMEnvironment())
 
     trainer = pl.Trainer.from_argparse_args(
         args,
