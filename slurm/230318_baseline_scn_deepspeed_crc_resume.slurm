@@ -85,7 +85,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
     --run_validate_first=False \
-    --auto_slurm_resubmit = True \
+    --auto_slurm_resubmit=True \
 
 
     
