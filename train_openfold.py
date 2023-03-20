@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import random
+import signal
 import sys
 import time
 
@@ -702,12 +703,17 @@ def main(args):
     # from pytorch_lightning.profiler import AdvancedProfiler
     # profiler = AdvancedProfiler(dirpath=".", filename="perf_logs03")
 
+    my_plugins = []
+    if(args.auto_slurm_resubmit):
+        my_plugins.append(SLURMEnvironment(requeue_signal=signal.SIGUSR1))
+
     trainer = pl.Trainer.from_argparse_args(
         args,
         default_root_dir=args.output_dir,
         strategy=strategy,
         callbacks=callbacks,
         logger=loggers,
+        plugins=my_plugins,
         # profiler="simple",
     )
 
@@ -1108,6 +1114,10 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to run validation before training.")
+    parser.add_argument("--auto_slurm_resubmit",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to automatically resubmit the job via slurm when it ends.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    
