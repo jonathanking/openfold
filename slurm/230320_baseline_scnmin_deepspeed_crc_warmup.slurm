@@ -50,7 +50,6 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --num_nodes=1 \
     --gpus=4 \
     --batch_size=1 \
     --accumulate_grad_batches=32 \
@@ -68,7 +67,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --openmm_activation=None \
     --seed=0 \
     --debug \
-    --num_workers=0 \
+    --num_workers=6 \
     --write_pdbs \
     --write_pdbs_every_n_steps=200 \
     --log_every_n_steps=1 \
