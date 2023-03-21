@@ -1,15 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=8ofwarmup
-#SBATCH --nodes=4
+#SBATCH --job-name=Lofwarmup
+#SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=1-00:00:00
-#SBATCH --partition=a100_multi
-#SBATCH --qos=short
+#SBATCH --time=6-00:00:00
+#SBATCH --partition=a100
+#SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=64
 
 ############################
 ##       Description      ##
@@ -51,10 +51,10 @@ srun python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLA
     --obsolete_pdbs_file_path=data/obsolete_230310.dat \
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
-    --num_nodes=4 \
+    --num_nodes=1 \
     --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=8 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
@@ -81,9 +81,9 @@ srun python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLA
     --use_scn_pdb_names=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment=baseline-scnmin-08-warmup  \
+    --experiment=baseline-scnmin-09-warmup  \
     --wandb_tags="baseline,scn,omm-warmup" \
-    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100_multi." \
+    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100" \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
