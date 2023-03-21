@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=ddpwarmup
-#SBATCH --nodes=4
+#SBATCH --job-name=warmup
+#SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=1-00:00:00
-#SBATCH --partition=a100_multi
-#SBATCH --qos=short
+#SBATCH --time=3-00:00:00
+#SBATCH --partition=a100
+#SBATCH --qos=normal
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -26,13 +26,11 @@ source scripts/activate_conda_env.sh
 module load cuda/11.3.0
 module load gcc/8.2.0
 
-export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
-
 
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/230320_warmup3/
+OUTDIR=out/experiments/230320_warmup11/
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
@@ -52,10 +50,10 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --num_nodes=4 \
+    --num_nodes=1 \
     --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=8 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
@@ -82,16 +80,16 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --use_scn_pdb_names=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment=baseline-scnmin-10-warmup  \
+    --experiment=baseline-scnmin-11-warmup  \
     --wandb_tags="baseline,scn,omm-warmup" \
-    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100_multi, replaceddpsampler" \
+    --wandb_note="Baseline on scn. OMM warmup over 750 steps. Using a100, replaceddpsampler" \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
     --run_validate_first=True \
-    --auto_slurm_resubmit=True \
+    --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
-    --openmm_warmup_steps=1000
+    --openmm_warmup_steps=750
 
 
     
