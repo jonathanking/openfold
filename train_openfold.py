@@ -761,16 +761,20 @@ def main(args):
             ckpt_path=ckpt_path,
         )
     elif args.trainer_mode == "validate-train":
+        print("Validating on train set.")
         trainer.validate(
             model_module,
             dataloaders=data_module.train_dataloader(), 
             ckpt_path=ckpt_path,
+            verbose=True,
         )
     elif args.trainer_mode == "validate-val":
+        print("Validating on val set.")
         trainer.validate(
             model_module,
             dataloaders=data_module.val_dataloader(), 
             ckpt_path=ckpt_path,
+            verbose=True,
         )
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
