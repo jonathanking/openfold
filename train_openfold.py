@@ -243,7 +243,7 @@ class OpenFoldWrapper(pl.LightningModule):
             self.lr_schedulers().step()
         
         if self.openmm_scheduler is not None:
-            self.openmm_scheduler.step()
+            self.openmm_scheduler.step(self.global_step)
 
         return loss
 
