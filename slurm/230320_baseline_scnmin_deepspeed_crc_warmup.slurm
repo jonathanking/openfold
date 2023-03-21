@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=Lofwarmup
-#SBATCH --nodes=1
+#SBATCH --job-name=ddpwarmup
+#SBATCH --nodes=4
 #SBATCH --gres=gpu:4
-#SBATCH --time=6-00:00:00
-#SBATCH --partition=a100
-#SBATCH --qos=long
+#SBATCH --time=1-00:00:00
+#SBATCH --partition=a100_multi
+#SBATCH --qos=short
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -43,7 +43,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
-srun python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
+./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
@@ -51,10 +51,11 @@ srun python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLA
     --obsolete_pdbs_file_path=data/obsolete_230310.dat \
     --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
-    --num_nodes=1 \
+    --replace_ddp_sampler=True \
+    --num_nodes=4 \
     --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=32 \
+    --accumulate_grad_batches=8 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
@@ -81,9 +82,9 @@ srun python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLA
     --use_scn_pdb_names=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment=baseline-scnmin-09-warmup  \
+    --experiment=baseline-scnmin-10-warmup  \
     --wandb_tags="baseline,scn,omm-warmup" \
-    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100" \
+    --wandb_note="Baseline on scn. OMM warmup over 1k steps. Using a100_multi, replaceddpsampler" \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
