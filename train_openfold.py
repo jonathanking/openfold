@@ -760,10 +760,16 @@ def main(args):
             datamodule=data_module,
             ckpt_path=ckpt_path,
         )
-    elif args.trainer_mode == "validate":
+    elif args.trainer_mode == "validate-train":
         trainer.validate(
             model_module,
             dataloaders=data_module.train_dataloader(), 
+            ckpt_path=ckpt_path,
+        )
+    elif args.trainer_mode == "validate-val":
+        trainer.validate(
+            model_module,
+            dataloaders=data_module.val_dataloader(), 
             ckpt_path=ckpt_path,
         )
     else:
