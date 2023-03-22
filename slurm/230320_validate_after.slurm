@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=evalAval
+#SBATCH --job-name=evalval
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks-per-node=4
@@ -25,6 +25,8 @@ source scripts/activate_conda_env.sh
 module load cuda/11.3.0
 module load gcc/8.2.0
 
+LATEST_CHECKPOINT="out/experiments/230318/finetune-openfold-02/1w4vxghv/checkpoints/54-1264.ckpt"
+echo ${LATEST_CHECKPOINT} 
 
 ############################
 ##     Array Job Exec.    ##
@@ -46,7 +48,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
     --val_alignment_dir=${VALIDATION_ALIGNMENTS_DIR} \
     --obsolete_pdbs_file_path=data/obsolete_230310.dat \
-    --resume_from_ckpt=out/experiments/230318/finetune-openfold-02/1w4vxghv/checkpoints/16-390.ckpt \
+    --resume_from_ckpt=${LATEST_CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --gpus=1 \
     --batch_size=1 \
