@@ -44,7 +44,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
-CHECKPOINT=out/experiments/230319/finetune-openfold-02/3lzb4s3o/checkpoints/63-959.ckpt
+CHECKPOINT=/zfs1/dkoes/jok120/good_model_checkpoints/3lzb4s3o/63-959.ckpt
 echo "Uses checkpoint $CHECKPOINT"
 
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
