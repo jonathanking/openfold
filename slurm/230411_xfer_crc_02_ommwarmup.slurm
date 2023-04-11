@@ -30,7 +30,7 @@ module load gcc/8.2.0
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/230407/
+OUTDIR=out/experiments/230411/
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
