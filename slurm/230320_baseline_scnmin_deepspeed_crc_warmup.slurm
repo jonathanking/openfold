@@ -1,22 +1,22 @@
 #!/bin/bash
-#SBATCH --job-name=warmup
+#SBATCH --job-name=warmup2
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=3-00:00:00
+#SBATCH --time=6-00:00:00
 #SBATCH --partition=a100
 #SBATCH --qos=normal
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=42
 
 ############################
 ##       Description      ##
 ############################
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Baseline exp 2 on SidechainNet data, but better checkpointing, etc."
-echo "Also tries to warmup OpenMM. 4 gpus x 4 nodes. a100_multi"
+echo "Also tries to warmup OpenMM over 1.5k steps. 4 gpus x 1 nodes. a100. "
 echo "Uses openmm loss."
 
 ############################
@@ -30,7 +30,7 @@ module load gcc/8.2.0
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/230320_warmup11/
+OUTDIR=out/experiments/230324_warmup15k/
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
@@ -59,7 +59,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=1000 \
+    --train_epoch_len=2000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
@@ -88,7 +88,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
     --run_validate_first=True \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
-    --openmm_warmup_steps=750
+    --openmm_warmup_steps=1500
 
 
     

@@ -5,6 +5,7 @@
 #SBATCH --ntasks-per-node=4
 #SBATCH --partition=a100
 #SBATCH --qos=short
+#SBATCH --time=1-00:00:00
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
