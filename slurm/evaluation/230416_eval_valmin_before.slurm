@@ -29,7 +29,7 @@ module load gcc/8.2.0
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/evaluation/230416/valmin_before
+OUTDIR=out/evaluation/230416/valmin_before1
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
