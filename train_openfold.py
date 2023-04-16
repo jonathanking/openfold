@@ -273,6 +273,7 @@ class OpenFoldWrapper(pl.LightningModule):
         )
 
         self._log(loss_breakdown, batch, outputs, train=False)
+        return loss_breakdown
         
     def validation_epoch_end(self, _):
         # Restore the model weights to normal
@@ -781,8 +782,8 @@ def main(args):
         )
         # Save results to file
         if wdb_logger is not None:
-            with open(
-                os.path.join(wdb_logger.experiment[0].dir, "val_results.pkl"), "wb") as f:
+            print("Saving val results to", wdb_logger.experiment[0].dir)
+            with open(os.path.join(wdb_logger.experiment[0].dir, "val_results.pkl"), "wb") as f:
                 pickle.dump(results, f)
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
