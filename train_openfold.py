@@ -171,9 +171,9 @@ class OpenFoldWrapper(pl.LightningModule):
         """
         phase = "train" if train else "val"
         csv_path = os.path.join(self.logger.experiment[0].dir, f"{phase}.csv")
-        print(f"Logging to CSV file {csv_path}")
         if not os.path.exists(csv_path):
             logging.info(f"Creating CSV file at {csv_path}")
+            print(f"Logging to CSV file {csv_path}")
             with open(csv_path, "w") as f:
                 f.write("protein_name,")
                 f.write(",".join(loss_breakdown.keys()))
@@ -782,8 +782,8 @@ def main(args):
         )
         # Save results to file
         if wdb_logger is not None:
-            print("Saving val results to", wdb_logger.experiment[0].dir)
-            with open(os.path.join(wdb_logger.experiment[0].dir, "val_results.pkl"), "wb") as f:
+            print("Saving val results to", wdb_logger.experiment.dir)
+            with open(os.path.join(wdb_logger.experiment.dir, "val_results.pkl"), "wb") as f:
                 pickle.dump(results, f)
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
