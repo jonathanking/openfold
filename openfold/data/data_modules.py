@@ -802,6 +802,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
                     filter_path=None,
                     max_template_hits=self.config.eval.max_template_hits,
                     mode="eval",
+                    use_scn_pdb_names=self.use_scn_pdb_names,
                 )
             else:
                 self.eval_dataset = None
@@ -812,6 +813,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
                 filter_path=None,
                 max_template_hits=self.config.predict.max_template_hits,
                 mode="predict",
+                use_scn_pdb_names=self.use_scn_pdb_names,
             )
 
     def _gen_dataloader(self, stage):
