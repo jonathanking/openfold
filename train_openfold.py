@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+import pickle
 import random
 import signal
 import sys
@@ -170,6 +171,7 @@ class OpenFoldWrapper(pl.LightningModule):
         """
         phase = "train" if train else "val"
         csv_path = os.path.join(self.logger.experiment[0].dir, f"{phase}.csv")
+        print(f"Logging to CSV file {csv_path}")
         if not os.path.exists(csv_path):
             logging.info(f"Creating CSV file at {csv_path}")
             with open(csv_path, "w") as f:
@@ -628,6 +630,7 @@ def main(args):
     data_module.setup()
 
     loggers = []
+    wdb_logger = None
     if(args.wandb):
         wdb_logger = WandbLogger(
             name=args.experiment_name,
@@ -770,12 +773,17 @@ def main(args):
         )
     elif args.trainer_mode == "validate-val":
         print("Validating on val set.")
-        trainer.validate(
+        results = trainer.validate(
             model_module,
             dataloaders=data_module.val_dataloader(), 
             ckpt_path=ckpt_path,
             verbose=True,
         )
+        # Save results to file
+        if wdb_logger is not None:
+            with open(
+                os.path.join(wdb_logger.experiment[0].dir, "val_results.pkl"), "wb") as f:
+                pickle.dump(results, f)
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
 
