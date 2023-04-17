@@ -93,6 +93,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
     --scheduler_warmup_no_steps=500 \
     --scheduler_max_lr=5e-4 \
     --use_scn_pdb_names=${USE_SCN_PDB_NAMES} \
+    --use_scn_pdb_names_val=${USE_SCN_PDB_NAMES} \
     --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID} \
