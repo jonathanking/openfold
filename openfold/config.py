@@ -672,6 +672,7 @@ config = mlc.ConfigDict(
                 "write_pdbs_every_n_steps": 10,
                 "pdb_dir": "./pdbs",
                 "use_scn_pdb_names": False,
+                "use_scn_pdb_names_val": False,
                 "scale_by_length": False,
                 "force_clipping_val": 1e6,
                 "squashed_loss": False,
