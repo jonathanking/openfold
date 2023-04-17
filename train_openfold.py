@@ -479,7 +479,7 @@ class OpenFoldWrapper(pl.LightningModule):
     def on_load_checkpoint(self, checkpoint):
         ema = checkpoint["ema"]
         if(not self.model.template_config.enabled):
-            ema["params"] = {k:v for k,v in ema["params"].items()}
+            ema["params"] = {k:v for k,v in ema["params"].items() if not "template" in k}
         self.ema.load_state_dict(ema)
 
     def on_save_checkpoint(self, checkpoint):
@@ -606,7 +606,7 @@ def main(args):
             sd = torch.load(args.resume_from_ckpt)
         # MOD-JK: there is no 'module.' prefix in the state dict; instead, it is missing the expected  `model.` prefix. This applies to initial_training and finetuning.pt files.
         # sd = {k[len("module."):]:v for k,v in sd.items()}
-        sd = {"model." + k: v for k, v in sd.items() if "template" not in k}
+        sd = {"model." + k: v for k, v in sd.items()}
         model_module.load_state_dict(sd)
         model_module.reinit_ema()  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.info("Successfully loaded model weights...")
