@@ -86,6 +86,13 @@ def model_config(
         c.data.data_module.data_loaders.num_workers = num_workers
         # c.model.heads.tm.enabled = True
         # c.loss.tm.weight = 0.1
+    # elif name == "finetuning_sidechainnet_notemp":
+    #     c.loss.violation.weight = 1.
+    #     c.loss.experimentally_resolved.weight = 0.01
+    #     c.data.data_module.data_loaders.num_workers = num_workers
+    #     c.model.template.enabled = False
+        # c.model.heads.tm.enabled = True
+        # c.loss.tm.weight = 0.1
     elif name == "finetuning_sidechainnet_inference":
         # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
         # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
