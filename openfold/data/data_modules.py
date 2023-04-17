@@ -658,6 +658,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
         distillation_alignment_index_path: Optional[str] = None,
         overfit_single_batch: bool = False,  # MOD-JK: added since PyLi overfit can't work with torch.Generators
         use_scn_pdb_names: bool = False,  # MOD-JK
+        use_scn_pdb_names_val: bool = False,  # MOD-JK
         **kwargs
     ):
         super(OpenFoldDataModule, self).__init__()
@@ -690,6 +691,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
         # MOD-JK: added since PyLi overfit can't work with torch.Generators
         self.overfit_single_batch = overfit_single_batch
         self.use_scn_pdb_names = use_scn_pdb_names
+        self.use_scn_pdb_names_val = use_scn_pdb_names_val
 
         if(self.train_data_dir is None and self.predict_data_dir is None):
             raise ValueError(
