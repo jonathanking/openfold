@@ -84,6 +84,7 @@ echo "Uses checkpoint $CHECKPOINT"
     --scheduler_warmup_no_steps=500 \
     --scheduler_max_lr=5e-4 \
     --use_scn_pdb_names=True \
+    --use_scn_pdb_names_val=False \
     --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
