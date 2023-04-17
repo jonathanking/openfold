@@ -36,7 +36,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         obsolete_pdbs_file_path: Optional[str] = None,
         template_release_dates_cache_path: Optional[str] = None,
         shuffle_top_k_prefiltered: Optional[int] = None,
-        treat_pdb_as_distillation: bool = True,
+        treat_pdb_as_distillation: bool = False,  # MOD-JK: This has too many reprocussions to keep as default True
         filter_path: Optional[str] = None,
         mode: str = "train", 
         alignment_index: Optional[Any] = None,
@@ -807,6 +807,7 @@ class OpenFoldDataModule(pl.LightningDataModule):
                     max_template_hits=self.config.eval.max_template_hits,
                     mode="eval",
                     use_scn_pdb_names=self.use_scn_pdb_names_val,
+                    treat_pdb_as_distillation=False,  # MOD-JK
                 )
             else:
                 self.eval_dataset = None

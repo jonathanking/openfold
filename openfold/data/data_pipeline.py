@@ -221,6 +221,11 @@ def make_pdb_features(
         high_confidence = protein_object.b_factors > confidence_threshold
         high_confidence = np.any(high_confidence, axis=-1)
         pdb_feats["all_atom_mask"] *= high_confidence[..., None]
+        if high_confidence.sum() == 0:
+            logging.warn(
+                f"{description}: No atoms with B-factor > {confidence_threshold}. "
+                "Setting all_atom_mask to 0.",
+                )
 
     return pdb_feats
 
