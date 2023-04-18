@@ -1620,8 +1620,9 @@ class AlphaFoldLoss(nn.Module):
                     loss = torch.tensor(0.)
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                 else:
-                    loss = self._compute_openmm_loss_and_write_pdbs(loss_fn)
+                    loss, raw_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                     losses["openmm_scaled"] = loss.detach().clone() * weight
+                    losses["openmm_raw_energy"] = raw_energy.detach().clone()
 
             else:
                 loss = loss_fn()
@@ -1659,7 +1660,7 @@ class AlphaFoldLoss(nn.Module):
             **loss** (torch.Tensor): The OpenMM loss.
 
         """
-        loss, scn_proteins_pred, scn_proteins_true = loss_fn()
+        loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
         if (
             self.config['openmm']['write_pdbs'] and 
             self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0
@@ -1683,4 +1684,4 @@ class AlphaFoldLoss(nn.Module):
                 wandb.save(pred_fn, base_path=base_path)
         elif self.config['openmm']['write_pdbs']:
             self.struct_idx += 1
-        return loss
+        return loss, raw_energy
