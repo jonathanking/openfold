@@ -98,7 +98,7 @@ if "SLURM_JOB_ID" in os.environ:
 
 
 class OpenFoldWrapper(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, config, csv_path):
         super(OpenFoldWrapper, self).__init__()
         self.config = config
         if config.loss.openmm.use_openmm_warmup:
@@ -115,6 +115,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.last_lr_step = -1
 
         self.automatic_optimization = not self.config.model.disable_backwards
+        self.csv_path = csv_path
     
     def reinit_ema(self):
         """Reinitialize EMA model weights using the current model weights.
@@ -169,27 +170,27 @@ class OpenFoldWrapper(pl.LightningModule):
         proteins in a batch). Each row should have the protein name followed by all of the
         loss and metric values found in the loss_breakdown and other_metric dictionaries.
         """
-        phase = "train" if train else "val"
-        csv_path = os.path.join(self.logger.experiment[0].dir, f"{phase}.csv")
-        if not os.path.exists(csv_path):
-            logging.info(f"Creating CSV file at {csv_path}")
-            print(f"Logging to CSV file {csv_path}")
-            with open(csv_path, "w") as f:
+        if not os.path.exists(self.csv_path):
+            logging.info(f"Creating CSV file at {self.csv_path}")
+            print(f"Logging to CSV file {self.csv_path}")
+            with open(self.csv_path, "w") as f:
                 f.write("protein_name,")
                 f.write(",".join(loss_breakdown.keys()))
                 f.write(",")
                 f.write(",".join(other_metrics.keys()))
+                f.write(",phase")
                 f.write("\n")
 
         protein_name = batch["name"][0] if len(batch["name"]) == 1 else "batch"
 
         fmt = lambda tensor_to_str: str(tensor_to_str.item()) if isinstance(tensor_to_str, torch.Tensor) else str(tensor_to_str)
 
-        with open(csv_path, "a") as f:
+        with open(self.csv_path, "a") as f:
             f.write(f"{protein_name},")
             f.write(",".join([fmt(v) for v in loss_breakdown.values()]))
             f.write(",")
             f.write(",".join([fmt(v) for v in other_metrics.values()]))
+            f.write(f",{'train' if train else 'eval'}")
             f.write("\n")
 
     def training_step(self, batch, batch_idx):
@@ -587,7 +588,7 @@ def main(args):
     update_openmm_config(config, args)
     update_experimental_config(config, args)
 
-    model_module = OpenFoldWrapper(config)
+    model_module = OpenFoldWrapper(config, args.csv_path)
     if args.jax_param_path is not None:
         model_module.model = load_jax_params_into_model(model_module.model,
                                                         args.jax_param_path)
@@ -775,6 +776,7 @@ def main(args):
         )
     elif args.trainer_mode == "validate-val":
         print("Validating on val set.")
+        model_module.csv_path = os.path.join(args.output_dir, "val_results.csv")
         results = trainer.validate(
             model_module,
             dataloaders=data_module.val_dataloader(), 
@@ -783,8 +785,45 @@ def main(args):
         )
         # Save results to file
         if wdb_logger is not None:
-            print("Saving val results to", wdb_logger.experiment.dir)
-            with open(os.path.join(wdb_logger.experiment.dir, "val_results.pkl"), "wb") as f:
+            print("Saving val results to", args.output_dir)
+            with open(os.path.join(args.output_dir, "val_results.pkl"), "wb") as f:
+                pickle.dump(results, f)
+    elif args.trainer_mode == "validate-val-test":
+        # VALIDATION SET
+        print("Validating on val set.")
+        model_module.csv_path = os.path.join(args.output_dir, "val_results.csv")
+        results = trainer.validate(
+            model_module,
+            dataloaders=data_module.val_dataloader(), 
+            ckpt_path=ckpt_path,
+            verbose=True,
+        )
+        if wdb_logger is not None:
+            print("Saving val results to", args.output_dir)
+            with open(os.path.join(args.output_dir, "val_results.pkl"), "wb") as f:
+                pickle.dump(results, f)
+        # TEST SET
+        print("Validating on test set.")
+        model_module.csv_path = os.path.join(args.output_dir, "test_results.csv")
+        args.val_data_dir = args.test_data_dir
+        args.val_alignment_dir = args.test_alignment_dir
+        data_module = OpenFoldDataModule(
+            config=config.data, 
+            batch_seed=args.seed,
+            **vars(args)
+        )
+        data_module.prepare_data()
+        data_module.setup()
+        results = trainer.validate(
+            model_module,
+            dataloaders=data_module.val_dataloader(), 
+            ckpt_path=ckpt_path,
+            verbose=True,
+        )
+        # Save results to file
+        if wdb_logger is not None:
+            print("Saving val results to", args.output_dir)
+            with open(os.path.join(args.output_dir, "test_results.pkl"), "wb") as f:
                 pickle.dump(results, f)
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
@@ -855,6 +894,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--val_alignment_dir", type=str, default=None,
         help="Directory containing precomputed validation alignments"
+    )
+    parser.add_argument(
+        "--test_data_dir", type=str, default=None,
+        help="Directory containing test mmCIF files"
+    )
+    parser.add_argument(
+        "--test_alignment_dir", type=str, default=None,
+        help="Directory containing precomputed test alignments"
     )
     parser.add_argument(
         "--kalign_binary_path", type=str, default='/usr/bin/kalign',
@@ -1171,6 +1218,11 @@ if __name__ == "__main__":
                         type=int,
                         default=1000,
                         help="Number of steps to warmup OpenMM.")
+    parser.add_argument("--csv_path",
+                        type=str,
+                        default="",
+                        help="Path to the csv log file.")
+    
     
     parser = pl.Trainer.add_argparse_args(parser)
    
@@ -1205,6 +1257,9 @@ if __name__ == "__main__":
 
     # This re-applies the training-time filters at the beginning of every epoch
     args.reload_dataloaders_every_n_epochs = 1
+
+    if not args.csv_path:
+        args.csv_path = os.path.join(args.output_dir, "log.csv")
 
     if args.debug:
         # Set logging level to debug
