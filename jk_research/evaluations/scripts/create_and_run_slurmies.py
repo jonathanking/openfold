@@ -111,21 +111,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('exp_directory',
                         type=str,
+                        default="jk_research/evaluations/experiment_directory.csv",
                         help='Path to the experiment directory.')
     parser.add_argument('eval_job_csv',
                         type=str,
+                        default="jk_research/evaluations/230419/eval_jobs.csv",
                         help='Path to the csv file containing the evaluation jobs.')
-    parser.add_argument('location', type=str, help='Location of the experiment.')
-    # args = parser.parse_args()
+    parser.add_argument('location',
+                        type=str,
+                        help='Location of the experiment.',
+                        default="g019")
+    args = parser.parse_args()
 
-    args = argparse.Namespace()
-    args.exp_directory = "/net/pulsar/home/koes/jok120/openfold/jk_research/evaluations/experiment_directory.csv"
-    args.eval_job_csv = "/net/pulsar/home/koes/jok120/openfold/jk_research/evaluations/230419/eval_jobs.csv"
-    args.location = 'g019'
     main(args)
-
-    # main(args.exp_directory, args.eval_job_csv)
-    # main(
-    #     "/net/pulsar/home/koes/jok120/openfold/jk_research/evaluations/experiment_directory.csv",
-    #     "/net/pulsar/home/koes/jok120/openfold/jk_research/evaluations/230418/eval_jobs.csv",
-    #     'g019')
