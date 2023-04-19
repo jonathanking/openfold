@@ -109,15 +109,15 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('exp_directory',
+    parser.add_argument('--exp_directory',
                         type=str,
                         default="jk_research/evaluations/experiment_directory.csv",
                         help='Path to the experiment directory.')
-    parser.add_argument('eval_job_csv',
+    parser.add_argument('--eval_job_csv',
                         type=str,
                         default="jk_research/evaluations/230419/eval_jobs.csv",
                         help='Path to the csv file containing the evaluation jobs.')
-    parser.add_argument('location',
+    parser.add_argument('--location',
                         type=str,
                         help='Location of the experiment.',
                         default="g019")
