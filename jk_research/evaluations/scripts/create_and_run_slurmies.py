@@ -48,7 +48,13 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
     # Find the actual experiment directory
     df["exp_dir"] = df["wandb_id"].apply(
         lambda x: f"out/experiments/*/finetune-openfold-02/{x}")
-    df["exp_dir"] = df["exp_dir"].apply(lambda x: glob.glob(x)[0])
+    try:
+        df["exp_dir"] = df["exp_dir"].apply(lambda x: glob.glob(x)[0])
+    except IndexError:
+        print("No experiment directory found. Check the wandb_id.")
+        print(df["exp_dir"].values)
+        print("Exiting...")
+        exit()
 
     df["checkpoint_path"] = df.apply(get_checkpoint_path, axis=1)
 
