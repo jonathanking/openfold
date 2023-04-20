@@ -1,33 +1,42 @@
 #!/bin/bash
-{preamble}
+#SBATCH --job-name=eval0
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --ntasks-per-node=4
+#SBATCH --partition=dept_gpu
+#SBATCH --time=6-00:00:00
+#SBATCH --output="/net/pulsar/home/koes/jok120/openfold/out/%A_%6a.out"
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=jok120@pitt.edu
+#SBATCH --nodelist=g019
 
 
 ############################
 ##       Description      ##
 ############################
-echo "Running job ${{SLURM_JOB_ID}} with ${{SLURM_NTASKS}} workers on node ${{SLURMD_NODENAME}}."
-echo "Experiment: {EXPERIMENT_NAME}"
+echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
+echo "Experiment: initial_training_eval_s0"
 
 ############################
 ##       Environment      ##
 ############################
 source scripts/activate_conda_env.sh
-{module_loads}
+module load cuda/11.5
 
 
 ############################
 ##     Array Job Exec.    ##
 ############################
-mkdir -p {OUTDIR}
+mkdir -p out/evaluation/230420/initial_training_eval_s0
 
 
-./train_openfold.py {TRAIN_STRUCTURES_DIR} {ALIGNMENTS_DIR} {TEMPLATE_STRUCTURES_DIR} {OUTDIR} 2021-10-10 \
-    --train_chain_data_cache_path={TRAIN_CACHE} \
-    --template_release_dates_cache_path={TEMPLATE_CACHE} \
-    --val_data_dir={VALIDATION_STRUCTURES_DIR} \
-    --val_alignment_dir={VALIDATION_ALIGNMENTS_DIR} \
+./train_openfold.py data/train_structs/scnmin_structs/ data/alignments/scnmin_alignments/ data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/ out/evaluation/230420/initial_training_eval_s0 2021-10-10 \
+    --train_chain_data_cache_path=data/caches/chain_data_cache_rodasnapshot_clustered.json \
+    --template_release_dates_cache_path=data/caches/mmcif_cache_rodasnapshot.json \
+    --val_data_dir=data/validation/cameo/20220116/minimized/data_dir \
+    --val_alignment_dir=data/validation/cameo/20220116/minimized/alignments \
     --obsolete_pdbs_file_path=data/obsolete_230310.dat \
-    --resume_from_ckpt={CHECKPOINT} \
+    --resume_from_ckpt=openfold/resources/openfold_params/initial_training.pt \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --gpus=1 \
     --batch_size=1 \
@@ -58,9 +67,9 @@ mkdir -p {OUTDIR}
     --use_scn_pdb_names_val=True \
     --use_openmm=True \
     --use_alphafold_sampling=True \
-    --experiment={EXPERIMENT_NAME} \
+    --experiment=initial_training_eval_s0 \
     --wandb_tags="eval" \
-    --wandb_note="{NOTES}" \
+    --wandb_note="Evaluating initial_training at step 0." \
     --log_to_csv=True \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
@@ -69,8 +78,8 @@ mkdir -p {OUTDIR}
     --use_openmm_warmup=False \
     --openmm_warmup_steps=1000 \
     --trainer_mode=validate-val-test \
-    --test_data_dir={TEST_STRUCTURES_DIR} \
-    --test_alignment_dir={TEST_ALIGNMENTS_DIR}
+    --test_data_dir=data/test/cameo/20230103/minimized/data_dir \
+    --test_alignment_dir=data/test/cameo/20230103/minimized/alignments
 
 
 ############################

@@ -10,6 +10,8 @@ from experiments import Experiment, TrainingExperiment, EvaluationExperiment
 
 def get_checkpoint_path(row):
     """Get the path to the checkpoint to use for an evaluation experiment."""
+    if row['exp_name'] == 'initial_training':
+        return "openfold/resources/openfold_params/initial_training.pt"
     if row["exp_suffix"] == "eval_sx":
         # Find the filename with the highest epoch number
         files = os.listdir(f"{row['exp_dir']}/checkpoints")
@@ -48,8 +50,13 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
     # Find the actual experiment directory
     df["exp_dir"] = df["wandb_id"].apply(
         lambda x: f"out/experiments/*/finetune-openfold-02/{x}")
+    def get_dir(x):
+        try:
+            return glob.glob(x)[0]
+        except IndexError:
+            return None
     try:
-        df["exp_dir"] = df["exp_dir"].apply(lambda x: glob.glob(x)[0])
+        df["exp_dir"] = df["exp_dir"].apply(get_dir)
     except IndexError:
         print("No experiment directory found. Check the wandb_id.")
         print(df["exp_dir"].values)
@@ -59,8 +66,13 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
     df["checkpoint_path"] = df.apply(get_checkpoint_path, axis=1)
 
     # get the step from the checkpoint path
-    df['step'] = df['checkpoint_path'].apply(
-        lambda x: x.split('/')[-1].split('-')[1].split('.')[0])
+    def get_step(row):
+        if row['exp_name'] == 'initial_training':
+            return 0
+        else:
+            return int(row['checkpoint_path'].split('/')[-1].split('-')[1].split('.')[0])
+
+    df['step'] = df.apply(get_step, axis=1)
 
     # replace the eval_sx with the actual step number
     df['new_exp_name'] = df['new_exp_name'].apply(lambda x: x.replace(
@@ -76,7 +88,6 @@ def create_slurm_eval_experiments(df):
     for i, row in df.iterrows():
         step = row["exp_suffix"].split("_")[1][1:]
         if step == "x":
-            # step = row['checkpoint_path'].split('/')[-1].split('-')[1].split('.')[0]
             step = row['step']
         eval_exp = EvaluationExperiment(
             exp_name=row["new_exp_name"],

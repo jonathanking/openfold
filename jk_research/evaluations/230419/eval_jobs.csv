@@ -1,5 +1,5 @@
 exp_suffix,"exp_name","eval_me"
-eval,"initial_training","True"
+eval_s0,"initial_training","True"
 eval_s945,"baseline-scnmin-noomm-00","True"
 eval_sx,"baseline-scnmin-noomm-00","True"
 eval_sx,"baseline-scnmin-omm-00c","True"
