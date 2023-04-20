@@ -116,6 +116,7 @@ class OpenFoldWrapper(pl.LightningModule):
 
         self.automatic_optimization = not self.config.model.disable_backwards
         self.csv_path = csv_path
+        self._test = False
     
     def reinit_ema(self):
         """Reinitialize EMA model weights using the current model weights.
@@ -134,7 +135,12 @@ class OpenFoldWrapper(pl.LightningModule):
         return self.model(batch)
 
     def _log(self, loss_breakdown, batch, outputs, train=True):
-        phase = "train" if train else "val"
+        if self._test:
+            phase = "test"
+        elif train:
+            phase = "train"
+        else:
+            phase = "val"
         for loss_name, indiv_loss in loss_breakdown.items():
             self.log(
                 f"{phase}/{loss_name}", 
@@ -807,6 +813,7 @@ def main(args):
                 pickle.dump(results, f)
         # TEST SET
         print("Validating on test set.")
+        model_module._test = True
         model_module.csv_path = os.path.join(args.output_dir, "test_results.csv")
         args.val_data_dir = args.test_data_dir
         args.val_alignment_dir = args.test_alignment_dir
