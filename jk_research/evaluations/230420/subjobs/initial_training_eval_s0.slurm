@@ -46,7 +46,7 @@ mkdir -p out/evaluation/230420/initial_training_eval_s0
     --wandb_project=finetune-openfold-02 \
     --wandb_entity=koes-group \
     --precision=bf16 \
-    --resume_model_weights_only=False \
+    --resume_model_weights_only=True \
     --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \

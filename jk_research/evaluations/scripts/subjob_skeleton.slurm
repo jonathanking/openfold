@@ -37,7 +37,7 @@ mkdir -p {OUTDIR}
     --wandb_project=finetune-openfold-02 \
     --wandb_entity=koes-group \
     --precision=bf16 \
-    --resume_model_weights_only=False \
+    --resume_model_weights_only={resume_model_weights_only} \
     --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
