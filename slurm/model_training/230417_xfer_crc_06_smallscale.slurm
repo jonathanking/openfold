@@ -2,9 +2,9 @@
 #SBATCH --job-name=xfer06
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:8
-#SBATCH --time=6-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --partition=a100_nvlink
-#SBATCH --qos=long
+#SBATCH --qos=normal
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
