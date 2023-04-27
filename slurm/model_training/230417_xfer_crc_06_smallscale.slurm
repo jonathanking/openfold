@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=xfer06
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:4
 #SBATCH --time=6-00:00:00
 #SBATCH --partition=a100_nvlink
 #SBATCH --qos=long
