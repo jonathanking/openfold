@@ -2,9 +2,9 @@
 #SBATCH --job-name=xfer06
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:8
-#SBATCH --time=3-00:00:00
+#SBATCH --time=6-00:00:00
 #SBATCH --partition=a100_nvlink
-#SBATCH --qos=normal
+#SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -15,7 +15,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID=xfer-scnmin-omm-06
+EXPERIMENT_ID=xfer_scnmin_omm_06
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Also tries to warmup OpenMM over 1000 steps. 8 gpus x 1 nodes. a100_nvlink"
 echo "This mimics xfer-scnmin-omm-04. Uses minimized val!"
@@ -35,7 +35,7 @@ module load gcc/8.2.0
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/230417_xfer04/
+OUTDIR=out/evaluation/230426/${EXPERIMENT_NAME}
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
@@ -58,9 +58,9 @@ echo "Uses checkpoint $CHECKPOINT"
     --resume_from_ckpt=${CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --gpus=8 \
+    --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=16 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
