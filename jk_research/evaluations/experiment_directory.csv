@@ -12,3 +12,4 @@
 "xfer-scnmin-omm-03","25qsm73w","crc","Same as xfer-scnin-omm-01, but modifies OMM to be smoother."
 "xfer-scnmin-omm-04","22otzx3o","crc","Same as xfer-scnmin-omm-01, but scales omm by 1/100."
 "xfer-scnmin-omm-05","19qb4yhu","crc","Same as xfer-scnmin-omm-01, but scales omm by 1/10."
+"xfer-scnmin-omm-06g19","59vz9bsn","g019","Starts from initial training, 1k OMM warmup, no LR warmup. Val min."
