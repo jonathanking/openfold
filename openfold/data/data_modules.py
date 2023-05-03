@@ -271,6 +271,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                 path = self._scn_path_index[name]
                 ext = os.path.splitext(path)[1]
             elif self.use_scn_pdb_names:
+                if chain_id is None:
+                    raise ValueError(f"Could not find PDB/CIF file for {name}. {self.data_dir} {rcsb_4letterID}")
                 path_pattern = os.path.join(self.data_dir, f"*{rcsb_4letterID.lower()}_*{chain_id.upper()}.pdb")
                 try:
                     path = glob.glob(path_pattern) + glob.glob(path_pattern.replace('.pdb', '.cif'))
