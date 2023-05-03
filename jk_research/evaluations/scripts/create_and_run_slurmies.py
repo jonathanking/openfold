@@ -40,7 +40,7 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
     exp_dir = pd.read_csv(exp_dir)
     eval_jobs = pd.read_csv(eval_jobs)
     # Remove rows in eval_jobs where the column 'eval_me' is False
-    eval_jobs = eval_jobs[eval_jobs["eval_me"]]
+    eval_jobs = eval_jobs[eval_jobs["eval_me"] == True]
     df = eval_jobs.merge(exp_dir, on="exp_name", how="left")
 
 
