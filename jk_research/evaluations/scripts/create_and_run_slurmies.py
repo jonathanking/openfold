@@ -39,7 +39,10 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
 
     exp_dir = pd.read_csv(exp_dir)
     eval_jobs = pd.read_csv(eval_jobs)
+    # Remove rows in eval_jobs where the column 'eval_me' is False
+    eval_jobs = eval_jobs[eval_jobs["eval_me"]]
     df = eval_jobs.merge(exp_dir, on="exp_name", how="left")
+
 
     df['exp_suffix'].fillna('eval_s!', inplace=True)
     df["new_exp_name"] = df["exp_name"] + "-" + df["exp_suffix"]
@@ -132,7 +135,7 @@ if __name__ == '__main__':
                         help='Path to the experiment directory.')
     parser.add_argument('--eval_job_csv',
                         type=str,
-                        default="jk_research/evaluations/230419/eval_jobs.csv",
+                        default="jk_research/evaluations/eval_jobs.csv",
                         help='Path to the csv file containing the evaluation jobs.')
     parser.add_argument('--location',
                         type=str,
