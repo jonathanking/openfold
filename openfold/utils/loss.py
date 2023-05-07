@@ -1624,7 +1624,7 @@ class AlphaFoldLoss(nn.Module):
                     loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                     losses["openmm_raw_energy"] = raw_energy.detach().clone()
-                    losses['openmm_added_h_energy'] = openmm_added_h_energy.detach().clone()
+                    losses['openmm_added_h_energy'] = openmm_added_h_energy
 
             else:
                 loss = loss_fn()
