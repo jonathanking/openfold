@@ -66,7 +66,7 @@ echo "Uses checkpoint $CHECKPOINT"
     --wandb_project=finetune-openfold-02 \
     --wandb_entity=koes-group \
     --precision=bf16 \
-    --resume_model_weights_only=True \
+    --resume_model_weights_only=False \
     --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
