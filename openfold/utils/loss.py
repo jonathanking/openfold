@@ -1533,11 +1533,12 @@ def masked_msa_loss(logits, true_msa, bert_mask, eps=1e-8, **kwargs):
 
 class AlphaFoldLoss(nn.Module):
     """Aggregation of the various losses described in the supplement"""
-    def __init__(self, config, openmm_scheduler):
+    def __init__(self, config, openmm_scheduler, mode='train'):
         super(AlphaFoldLoss, self).__init__()
         self.config = config
         self.struct_idx = 0
         self._openmm_scheduler = openmm_scheduler
+        self.mode = mode
 
     def forward(self, out, batch, _return_breakdown=False):
         if "violation" not in out.keys():
@@ -1620,9 +1621,10 @@ class AlphaFoldLoss(nn.Module):
                     loss = torch.tensor(0.)
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                 else:
-                    loss, raw_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
+                    loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                     losses["openmm_raw_energy"] = raw_energy.detach().clone()
+                    losses['openmm_added_h_energy'] = openmm_added_h_energy.detach().clone()
 
             else:
                 loss = loss_fn()
@@ -1660,6 +1662,7 @@ class AlphaFoldLoss(nn.Module):
             **loss** (torch.Tensor): The OpenMM loss.
 
         """
+        openmm_added_h_energy = 0.0
         loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
         if (
             self.config['openmm']['write_pdbs'] and 
@@ -1684,4 +1687,9 @@ class AlphaFoldLoss(nn.Module):
                 wandb.save(pred_fn, base_path=base_path)
         elif self.config['openmm']['write_pdbs']:
             self.struct_idx += 1
-        return loss, raw_energy
+        
+        # Log the OpenMM energy when OpenMM is allowed to add hydrogens
+        if self.mode != 'train':
+            openmm_added_h_energy = scn_proteins_pred[0].get_energy(add_hydrogens_via_openmm=True, add_missing=True, return_unitless_kjmol=True)
+
+        return loss, raw_energy, openmm_added_h_energy

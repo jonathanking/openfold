@@ -200,6 +200,7 @@ class OpenFoldWrapper(pl.LightningModule):
             f.write("\n")
 
     def training_step(self, batch, batch_idx):
+        self.loss.mode = 'train'
         if not self.automatic_optimization:
             opt = self.optimizers()
             opt.zero_grad()
@@ -260,6 +261,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.ema.update(self.model)
 
     def validation_step(self, batch, batch_idx):
+        self.loss.mode = 'val'
         # At the start of validation, load the EMA weights
         if(self.cached_weights is None):
             # model.state_dict() contains references to model weights rather

@@ -15,7 +15,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID=xfer-scnmin-omm-06g19b
+EXPERIMENT_ID=xfer-scnmin-omm-06g19c
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Also tries to warmup OpenMM over 1000 steps. 8 gpus x 1 nodes. a100_nvlink"
 echo "This mimics xfer-scnmin-omm-04. Uses minimized val!"
@@ -35,7 +35,7 @@ module load cuda/11.5
 ############################
 ##     Array Job Exec.    ##
 ############################
-OUTDIR=out/experiments/xfer_scnmin_omm_06g19b/
+OUTDIR=out/experiments/xfer_scnmin_omm_06g19c/
 mkdir -p ${OUTDIR}
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
@@ -46,7 +46,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=out/experiments/230417_xfer04/finetune-openfold-02/59vz9bsn/checkpoints/110-776.ckpt
+CHECKPOINT=out/experiments/230417_xfer04/finetune-openfold-02/59vz9bsn/checkpoints/153-1077.ckpt
 echo "Uses checkpoint $CHECKPOINT"
 
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
@@ -81,8 +81,8 @@ echo "Uses checkpoint $CHECKPOINT"
     --log_every_n_steps=1 \
     --config_preset=finetuning_sidechainnet \
     --violation_loss_weight=1 \
-    --scheduler_base_lr=0 \
-    --scheduler_warmup_no_steps=0 \
+    --scheduler_base_lr=5e-4 \
+    --scheduler_warmup_no_steps=1 \
     --scheduler_max_lr=5e-4 \
     --use_scn_pdb_names=True \
     --use_scn_pdb_names_val=True \
