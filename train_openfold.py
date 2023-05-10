@@ -679,7 +679,7 @@ def main(args):
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
-            save_top_k=-1,
+            save_top_k=3,
             monitor="train/loss",
             # dirpath=wdb_logger.experiment.dir if args.wandb else None,
             verbose=True
@@ -688,7 +688,7 @@ def main(args):
 
     if(args.early_stopping):
         es = EarlyStoppingVerbose(
-            monitor="val/lddt_ca",
+            monitor="val/lddt_aa",
             min_delta=args.min_delta,
             patience=args.patience,
             verbose=False,
