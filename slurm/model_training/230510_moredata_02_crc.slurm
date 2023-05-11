@@ -41,8 +41,10 @@ module load gcc/8.2.0
 OUTDIR=out/experiments/${EXPERIMENT_ID}/
 mkdir -p ${OUTDIR}
 
-TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0510/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments0510/
+# TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0510/
+# ALIGNMENTS_DIR=data/alignments/scnmin_alignments0510/
+TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
+ALIGNMENTS_DIR=data/alignments/scnmin_alignments/
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 TRAIN_CACHE=data/caches/chain_data_cache_rodasnapshot_clustered.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
