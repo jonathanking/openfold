@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=moredata
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH --time=6-00:00:00
-#SBATCH --partition=a100
+#SBATCH --partition=a100_nvlink
+#SBATCH --constraint=80g
 #SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --output="/ihome/dkoes/jok120/openfold/out/%A_%6a.out"
@@ -41,10 +42,10 @@ module load gcc/8.2.0
 OUTDIR=out/experiments/${EXPERIMENT_ID}/
 mkdir -p ${OUTDIR}
 
-# TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0510/
-# ALIGNMENTS_DIR=data/alignments/scnmin_alignments0510/
-TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments/
+TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0510/
+ALIGNMENTS_DIR=data/alignments/scnmin_alignments0510/
+# TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs/
+# ALIGNMENTS_DIR=data/alignments/scnmin_alignments/
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 TRAIN_CACHE=data/caches/chain_data_cache_rodasnapshot_clustered.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
@@ -65,9 +66,9 @@ export CUDA_LAUNCH_BLOCKING=1
     --resume_from_ckpt=${CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --gpus=4 \
+    --gpus=8 \
     --batch_size=1 \
-    --accumulate_grad_batches=32 \
+    --accumulate_grad_batches=16 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
@@ -80,7 +81,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --add_struct_metrics \
     --openmm_weight=0.01 \
     --openmm_activation=None \
-    --seed=0 \
+    --seed=1 \
     --num_workers=4 \
     --write_pdbs \
     --write_pdbs_every_n_steps=200 \
