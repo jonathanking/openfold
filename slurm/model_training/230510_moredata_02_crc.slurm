@@ -76,9 +76,8 @@ echo "Uses checkpoint $CHECKPOINT"
     --add_struct_metrics \
     --openmm_weight=0.01 \
     --openmm_activation=None \
-    --seed=1 \
-    --debug \
-    --num_workers=6 \
+    --seed=0 \
+    --num_workers=4 \
     --write_pdbs \
     --write_pdbs_every_n_steps=200 \
     --log_every_n_steps=1 \
