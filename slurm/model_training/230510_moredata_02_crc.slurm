@@ -52,6 +52,8 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 CHECKPOINT=openfold/resources/openfold_params/initial_training.pt
 echo "Uses checkpoint $CHECKPOINT"
 
+export CUDA_LAUNCH_BLOCKING=1
+
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
