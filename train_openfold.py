@@ -1276,9 +1276,9 @@ if __name__ == "__main__":
     if args.debug:
         # Set logging level to debug
         root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
+        root.setLevel(logging.WARNING)
         handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.DEBUG)
+        handler.setLevel(logging.WARNING)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         root.addHandler(handler)
