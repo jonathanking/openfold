@@ -699,7 +699,7 @@ def main(args):
             mode="max",
             check_finite=True,
             strict=True,
-            min_steps=args.openmm_warwmup_steps if args.use_openmm_warmup else 0,
+            min_steps=args.openmm_warmup_steps if args.use_openmm_warmup else 0,
         )
         callbacks.append(es)
 
