@@ -496,6 +496,10 @@ class OpenFoldWrapper(pl.LightningModule):
 
     def resume_last_lr_step(self, lr_step):
         self.last_lr_step = lr_step
+        self.openmm_scheduler.cur_step = lr_step
+        cur_openmm = self.openmm_scheduler.get_lr()
+        logging.warn(f"Resuming from lr step: {lr_step} with current openmm weight"
+                     f" = {cur_openmm}".format(lr_step))
 
     def load_from_jax(self, jax_path):
         model_basename = os.path.splitext(
@@ -691,10 +695,11 @@ def main(args):
             monitor="val/lddt_aa",
             min_delta=args.min_delta,
             patience=args.patience,
-            verbose=False,
+            verbose=True,
             mode="max",
             check_finite=True,
             strict=True,
+            min_steps=args.openmm_warwmup_steps if args.openmm_warmup else 0,
         )
         callbacks.append(es)
 

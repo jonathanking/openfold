@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID=moredata_scnmin_omm_03_xfer
+EXPERIMENT_ID=moredata_scnmin_omm_02b_xfer
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "The biggest change here is using a larger training set."
 echo "Warmup OpenMM over 1000 steps. 4 gpus x 1 nodes."
@@ -52,7 +52,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=/zfs1/dkoes/jok120/good_model_checkpoints/3lzb4s3o/63-959.ckpt
+CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/moredata_scnmin_omm_02_xfer/finetune-openfold-02/pn74xhn8/checkpoints/75-1043.ckpt
 echo "Uses checkpoint $CHECKPOINT"
 
 export CUDA_LAUNCH_BLOCKING=1
@@ -104,10 +104,10 @@ export CUDA_LAUNCH_BLOCKING=1
     --run_validate_first=False \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
-    --openmm_warmup_steps=1600 \
+    --openmm_warmup_steps=1000 \
     --early_stopping=True \
     --min_delta=0 \
-    --patience=10
+    --patience=7
 
 
 

@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID=moredata_scnmin_omm_03_xfer
+EXPERIMENT_ID=moredata_scnmin_omm_02_xfer
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "The biggest change here is using a larger training set."
 echo "Warmup OpenMM over 1000 steps. 4 gpus x 1 nodes."
@@ -104,10 +104,10 @@ export CUDA_LAUNCH_BLOCKING=1
     --run_validate_first=False \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
-    --openmm_warmup_steps=1600 \
+    --openmm_warmup_steps=1000 \
     --early_stopping=True \
     --min_delta=0 \
-    --patience=10
+    --patience=7
 
 
 
