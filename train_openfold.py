@@ -684,7 +684,7 @@ def main(args):
             every_n_epochs=1,
             auto_insert_metric_name=False,
             save_top_k=3,
-            monitor="train/loss",
+            monitor="val/lddt_aa",
             # dirpath=wdb_logger.experiment.dir if args.wandb else None,
             verbose=True
         )
