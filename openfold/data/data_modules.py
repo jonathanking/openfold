@@ -257,6 +257,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             alignment_dir = self.alignment_dir
             alignment_index = self.alignment_index[name]
 
+        file_has_multiple_chains = True
         if(self.mode == 'train' or self.mode == 'eval'):
             spl = name.rsplit('_', 1)
             if(len(spl) == 2):
@@ -270,6 +271,8 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
             if self.use_scn_pdb_names and name in self._scn_path_index:
                 path = self._scn_path_index[name]
                 ext = os.path.splitext(path)[1]
+                basename = os.path.basename(path)
+                file_has_multiple_chains = "_" not in basename
             elif self.use_scn_pdb_names:
                 if chain_id is None:
                     raise ValueError(f"Could not find PDB/CIF file for {name}. {self.data_dir} {rcsb_4letterID}")
@@ -277,6 +280,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                 try:
                     path = glob.glob(path_pattern) + glob.glob(path_pattern.replace('.pdb', '.cif'))
                     path = path[0]
+                    file_has_multiple_chains = False
                 except IndexError:
                     # The file name may be in ASTRAL format, or we may have an incorrect filename case
                     # Add brackets around the upper and lowercase characters of each chain char so that glob may match any case
@@ -286,8 +290,16 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     try:
                         path = glob.glob(path_pattern) + glob.glob(path_pattern.replace('.pdb', '.cif'))
                         path = path[0]
+                        file_has_multiple_chains = False
                     except IndexError:
-                        raise ValueError(f"Could not find PDB/CIF file for {path_pattern}.")
+                        # Default/openfold behaviour of 4 letter cifs (and, more flexibly, pdbs)
+                        path_pattern = os.path.join(self.data_dir, rcsb_4letterID.lower())
+                        path = glob.glob(path_pattern + '.cif')
+                        if len(path) == 0:
+                            path = glob.glob(path_pattern + '.pdb')
+                        if len(path) == 0:
+                            raise ValueError(f"Could not find PDB/CIF file for {path_pattern}.")
+                        path = path[0]
                 ext = os.path.splitext(path)[1]
                 self._scn_path_index[name] = path
             else:  # Default behaviour before modification
@@ -336,7 +348,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
                     alignment_dir=alignment_dir,
                     is_distillation=self.treat_pdb_as_distillation,
                     # MOD-JK: SCN PDBs always contain a single chain. This allows us to ignore the chain_id in the file, sometimes they differ (1F93_2_B)
-                    chain_id=chain_id if not self.use_scn_pdb_names else None,  
+                    chain_id=None,  
                     alignment_index=alignment_index,
                     _structure_index=structure_index,
                 )
@@ -438,7 +450,7 @@ class OpenFoldDataset(torch.utils.data.Dataset):
         if not self.use_alphafold_sampling_procedure:
             assert len(datasets) == 1, "Cannot use non-AlphaFold sampling procedure with multiple datasets."
         if not self.use_alphafold_sampling_procedure and len(datasets[0]) != epoch_len:
-            print(f"Warning: non-AlphaFold sampling procedure with epoch_len != dataset "
+            logging.warn(f"Warning: non-AlphaFold sampling procedure with epoch_len != dataset "
                   f"length. Using dataset length as epoch_len ({len(datasets[0])}).")
             self.epoch_len = len(datasets[0])
 

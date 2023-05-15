@@ -53,6 +53,9 @@ def parse_file(
             return {}
           
         protein_object = protein.from_pdb_string(pdb_string, None)
+        if protein_object is None:
+            logging.warn(f"Could not parse {f}. Skipping...")
+            return {}
 
         chain_dict = {} 
         chain_dict["seq"] = residue_constants.aatype_to_str_sequence(
@@ -75,7 +78,7 @@ def parse_file(
         if len(file_id) == 3:
             file_id = file_id[0].lower() + "_" + file_id[2].upper()
         elif len(file_id) == 2:
-            file_id = file_id[0].lower() + "_" + file_id[1].lower()
+            file_id = file_id[0].lower() + "_" + file_id[1].upper()
         else:
             file_id = "_".join(file_id)
             print("Unable to parse file_id: ", file_id)
