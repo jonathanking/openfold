@@ -28,24 +28,37 @@ source scripts/activate_conda_env.sh
 # TRAIN_CACHE_OUT=data/caches/chain_data_cache_scn.json
 # TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_scn.json
 
-# For typical openfold
-echo "Using openfold data"
-TRAIN_STRUCTURES_DIR=data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+# # For typical openfold
+# echo "Using openfold data"
+# TRAIN_STRUCTURES_DIR=data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+# TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+# TRAIN_CACHE_OUT=data/caches/chain_data_cache_rodasnapshot_clustered.json
+# TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
+
+# For combined_scnmin_alignments0510_random10k
+echo "Using combined_scnmin_alignments0510_random10k data"
+TRAIN_STRUCTURES_DIR=data/train_structs/combined_scnmin_structs0510_random10k
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
-TRAIN_CACHE_OUT=data/caches/chain_data_cache_rodasnapshot_clustered.json
+TRAIN_CACHE_OUT=data/caches/chain_data_cache_combined_scnmin_structs0510_random10k_clustered.json
 TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
 
 ############################
 ##     Array Job Exec.    ##
 ############################
-echo "Generating training data cache..."
+# echo "Generating training data cache..."
+# python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACHE_OUT} \
+#     --cluster_file=clusters-by-entity-40.txt --no_workers=${SLURM_NTASKS}	
+# echo "done."
+
+echo "Generating unclustered training data cache..."
 python scripts/generate_chain_data_cache.py ${TRAIN_STRUCTURES_DIR} ${TRAIN_CACHE_OUT} \
-    --cluster_file=clusters-by-entity-40.txt --no_workers=${SLURM_NTASKS}	
+    --no_workers=${SLURM_NTASKS}	
 echo "done."
 
-echo "Generating template data cache..."
-python scripts/generate_mmcif_cache.py ${TEMPLATE_STRUCTURES_DIR} ${TEMPLATE_CACHE_OUT} --no_workers=${SLURM_NTASKS}	
-echo "done."
+
+# echo "Generating template data cache..."
+# python scripts/generate_mmcif_cache.py ${TEMPLATE_STRUCTURES_DIR} ${TEMPLATE_CACHE_OUT} --no_workers=${SLURM_NTASKS}	
+# echo "done."
 
 # Print out the generated file paths
 echo "Generated files:"
