@@ -139,6 +139,7 @@ class OpenFoldWrapper(pl.LightningModule):
             phase = "test"
         elif train:
             phase = "train"
+            self.log("train/step_monitor", self.global_step, on_step=True, on_epoch=False, logger=True)
         else:
             phase = "val"
         for loss_name, indiv_loss in loss_breakdown.items():
@@ -691,7 +692,7 @@ def main(args):
             every_n_epochs=1,
             auto_insert_metric_name=False,
             save_top_k=1,
-            monitor="trainer/global_step",
+            monitor="train/step_monitor",
             verbose=True
         )
         callbacks.extend([mc, mc_last])

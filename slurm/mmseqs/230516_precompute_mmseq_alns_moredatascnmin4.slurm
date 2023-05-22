@@ -2,7 +2,8 @@
 #SBATCH --job-name=MSA4
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:0
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
 #SBATCH --time=28-00:00:00
 #SBATCH --partition=dept_cpu
 #SBATCH --nodelist=n024
@@ -33,11 +34,13 @@ echo "Constructing alignments for scnmin proteins."
 echo "Input: ${INPUT_FASTA}"
 echo "Output: ${OUT}"
 
+rm -r /scr/jok120/scnmin_alignment_generation_0516/alignments${SPLIT}/
+
 
 ############################
 ##     Array Job Exec.    ##
 ############################
-
+export MMSEQS_NUM_THREADS=64
 python scripts/precompute_alignments_mmseqs.py $INPUT_FASTA $MMSEQS_DB \
     uniref30_2103_db \
     $OUT \
@@ -45,7 +48,7 @@ python scripts/precompute_alignments_mmseqs.py $INPUT_FASTA $MMSEQS_DB \
     --hhsearch_binary_path=/net/pulsar/home/koes/jok120/openfold/lib/conda/envs/openfold_venv/bin/hhsearch \
     --env_db=colabfold_envdb_202108_db \
     --pdb70=$PDB70 \
-    --fasta_chunk_size=64
+    --fasta_chunk_size=2048
     
 
 ############################
