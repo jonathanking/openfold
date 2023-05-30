@@ -686,14 +686,16 @@ def main(args):
             auto_insert_metric_name=False,
             save_top_k=3,
             monitor="val/lddt_aa",
-            verbose=True
+            verbose=True,
+            mode="max",
         )
         mc_last = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
             save_top_k=1,
             monitor="train/step_monitor",
-            verbose=True
+            verbose=True,
+            mode="max",
         )
         callbacks.extend([mc, mc_last])
 
