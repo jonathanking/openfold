@@ -1,6 +1,9 @@
 #!/bin/bash -e
 # Copied from colabfold.mmseqs.com
 
+#MOD-JK for more threads
+export MMSEQS_NUM_THREADS=64
+
 MMSEQS="$1"
 QUERY="$2"
 DBBASE="$3"

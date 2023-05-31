@@ -13,3 +13,4 @@
 "xfer-scnmin-omm-04","22otzx3o","crc","Same as xfer-scnmin-omm-01, but scales omm by 1/100."
 "xfer-scnmin-omm-05","19qb4yhu","crc","Same as xfer-scnmin-omm-01, but scales omm by 1/10."
 "xfer-scnmin-omm-06g19","59vz9bsn","g019","Starts from initial training, 1k OMM warmup, no LR warmup. Val min."
+"4xmoredata_scnmin_omm_01","1xvryzvk","g019","Uses 30k alignments from standard trainin set + about 12k scnmin proteins for a total of about 4x more data."

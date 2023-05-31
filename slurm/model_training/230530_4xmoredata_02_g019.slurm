@@ -1,28 +1,26 @@
 #!/bin/bash
-#SBATCH --job-name=30kpure
+#SBATCH --job-name=4xdata
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:8
-#SBATCH --time=6-00:00:00
-#SBATCH --partition=a100_nvlink
-#SBATCH --qos=long
-#SBATCH --cluster=gpu
+#SBATCH --gres=gpu:4
+#SBATCH --nodelist=g019
+#SBATCH --time=28-00:00:00
+#SBATCH --partition=dept_gpu
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=12
+#SBATCH --ntasks-per-node=32
 
 
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="30kpure-scnmin-omm-01"
+EXPERIMENT_ID="4xmoredata-scnmin-omm-02"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
-echo "The biggest change here is using a much larger training set after generating MSAs."
+echo "The biggest change here is using a 4x larger training set."
 echo "Warmup OpenMM over 1000 steps. 4 gpus x 1 nodes."
 echo "Uses minimized val!"
-echo "Starts training from 'initial_training.pt'."
+echo "Starts training from 'finetuning_5.pt'."
 echo "This will be called ${EXPERIMENT_ID}."
 echo "OMM loss is scaled by 0.01."
 echo "Skips warmup for standard lr."
@@ -32,7 +30,6 @@ echo "Skips warmup for standard lr."
 ############################
 source scripts/activate_conda_env.sh
 module load cuda/11.5
-export PL_TORCH_DISTRIBUTED_BACKEND=gloo
 
 
 ############################
@@ -43,18 +40,19 @@ mkdir -p ${OUTDIR}
 
 # Remember, the aln dir is what determines the training set size! 
 # The structure directory and caches can contain more structures than the aln dir.
-# The train_structures_dir here contains only the scnmin structs as of 230530 (30k).
+# The train_structures_dir here contains all of the scnmin structs as of 230510 as well
+# as all of the roda structures!
 
-TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  
+TRAIN_STRUCTURES_DIR=data/train_structs/combined_scnmin_structs0510/
+ALIGNMENTS_DIR=data/alignments/combined_scnmin_alignments0510_random30k/  
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
-TRAIN_CACHE=data/caches/scnmin_structs0530_cache.json
+TRAIN_CACHE=data/caches/chain_data_cache_rodasnapshot_clustered.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
 # CHECKPOINT=/net/pulsar/home/koes/jok120/openfold/out/experiments/4xmoredata_scnmin_omm_00b/finetune-openfold-02/29l9z1lf/checkpoints/15-111.ckpt
-CHECKPOINT=openfold/resources/openfold_params/initial_training.pt
+CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
 echo "Uses checkpoint $CHECKPOINT"
 
 if [[ "$CHECKPOINT" == *"initial_training.pt"* ]] || [[ "$CHECKPOINT" == *"finetuning_"* ]]; then
@@ -65,7 +63,6 @@ fi
 
 export CUDA_LAUNCH_BLOCKING=1
 
-
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
@@ -75,9 +72,9 @@ export CUDA_LAUNCH_BLOCKING=1
     --resume_from_ckpt=${CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --gpus=8 \
+    --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=16 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
@@ -92,9 +89,9 @@ export CUDA_LAUNCH_BLOCKING=1
     --openmm_activation=None \
     --seed=1 \
     --debug \
-    --num_workers=7 \
+    --num_workers=6 \
     --write_pdbs \
-    --write_pdbs_every_n_steps=300 \
+    --write_pdbs_every_n_steps=200 \
     --log_every_n_steps=1 \
     --config_preset=finetuning_sidechainnet \
     --violation_loss_weight=1 \
@@ -106,8 +103,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="omm,scnmin,omm-warmup,valmin,more-data,more-pure-data" \
-    --wandb_note="More 'pure' training data. Resume from initial_training. Valmin. OMM warmup over 1000 steps. Skips standard warmup." \
+    --wandb_tags="omm,scnmin,omm-warmup,valmin,more-data,finetuning-ckpt" \
+    --wandb_note="4x more training data. Resume from finetuning 5!! Valmin. OMM warmup over 1000 steps. Skips standard warmup. Fixes checkpointing." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
