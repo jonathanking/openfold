@@ -9,15 +9,16 @@
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=12
+#SBATCH --constraint=80g
 
 
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="30kpure-scnmin-omm-01"
+EXPERIMENT_ID="30kpure-scnmin-omm-02"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "The biggest change here is using a much larger training set after generating MSAs."
 echo "Warmup OpenMM over 1000 steps. 4 gpus x 1 nodes."
