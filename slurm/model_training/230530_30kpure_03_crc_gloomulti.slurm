@@ -11,8 +11,6 @@
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=12
-#SBATCH --constraint=80g
-
 
 
 ############################
