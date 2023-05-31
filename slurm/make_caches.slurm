@@ -36,11 +36,18 @@ source scripts/activate_conda_env.sh
 # TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
 
 # For combined_scnmin_alignments0510_random10k
-echo "Using combined_scnmin_alignments0510_random10k data"
-TRAIN_STRUCTURES_DIR=data/train_structs/combined_scnmin_structs0510_random10k
-TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
-TRAIN_CACHE_OUT=data/caches/chain_data_cache_combined_scnmin_structs0510_random10k_clustered.json
-TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
+# echo "Using combined_scnmin_alignments0510_random10k data"
+# TRAIN_STRUCTURES_DIR=data/train_structs/combined_scnmin_structs0510_random10k
+# TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+# TRAIN_CACHE_OUT=data/caches/chain_data_cache_combined_scnmin_structs0510_random10k_clustered.json
+# TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
+
+# For scnmin_alignments0530 data
+echo "Using scnmin_alignments0530 data"
+TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530
+# TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite
+TRAIN_CACHE_OUT=data/caches/scnmin_structs0530_cache.json
+# TEMPLATE_CACHE_OUT=data/caches/mmcif_cache_rodasnapshot.json
 
 ############################
 ##     Array Job Exec.    ##
@@ -63,7 +70,7 @@ echo "done."
 # Print out the generated file paths
 echo "Generated files:"
 echo "    ${TRAIN_CACHE_OUT}"
-echo "    ${TEMPLATE_CACHE_OUT}"
+# echo "    ${TEMPLATE_CACHE_OUT}"
 
 
 
