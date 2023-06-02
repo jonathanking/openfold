@@ -35,7 +35,8 @@ source scripts/activate_conda_env.sh
 module load cuda/11.3.0
 module load gcc/8.2.0
 # Trying to debug NCCL hanging
-export PL_TORCH_DISTRIBUTED_BACKEND=gloo
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+# export PL_TORCH_DISTRIBUTED_BACKEND=gloo
 export NCCL_P2P_DISABLE=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=ALL
