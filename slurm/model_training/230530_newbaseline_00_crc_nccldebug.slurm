@@ -1,16 +1,16 @@
 #!/bin/bash
 #SBATCH --job-name=bsln
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH --time=6-00:00:00
-#SBATCH --partition=a100
+#SBATCH --partition=a100_nvlink
 #SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=64
-
+#SBATCH --ntasks-per-node=80
+#SBATCH --constraint=80g
 
 
 ############################
@@ -33,7 +33,7 @@ source scripts/activate_conda_env.sh
 module load cuda/11.3.0
 module load gcc/8.2.0
 # Trying to debug NCCL hanging
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+# export CUDA_VISIBLE_DEVICES=0,1,2,3
 # export PL_TORCH_DISTRIBUTED_BACKEND=gloo
 # export NCCL_P2P_DISABLE=1
 # export NCCL_DEBUG=INFO
