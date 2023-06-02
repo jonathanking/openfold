@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bsln
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:4
 #SBATCH --time=6-00:00:00
 #SBATCH --partition=a100_nvlink
 #SBATCH --qos=long
@@ -9,7 +9,7 @@
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=80
+#SBATCH --ntasks-per-node=64
 #SBATCH --constraint=80g
 
 
@@ -80,9 +80,9 @@ export CUDA_LAUNCH_BLOCKING=1
     --resume_from_ckpt=${CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --gpus=8 \
+    --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=16 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
