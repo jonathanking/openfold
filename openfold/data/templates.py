@@ -848,8 +848,23 @@ def _process_single_hit(
         template_sequence,
     )
     # Fail if we can't find the mmCIF file.
-    with open(cif_path, "r") as cif_file:
-        cif_string = cif_file.read()
+    try:
+        with open(cif_path, "r") as cif_file:
+            cif_string = cif_file.read()
+    except FileNotFoundError as e:
+        error = (
+            "%s_%s (sum_probs: %.2f, rank: %d): feature extracting errors: "
+            "%s, mmCIF parsing errors: %s"
+            % (
+                hit_pdb_code,
+                hit_chain_id,
+                hit.sum_probs,
+                hit.index,
+                str(e),
+                "Could not find mmCIF file.",
+            )
+        )
+        return SingleHitResult(features=None, error=error, warning=None)
 
     parsing_result = mmcif_parsing.parse(
         file_id=hit_pdb_code, mmcif_string=cif_string
