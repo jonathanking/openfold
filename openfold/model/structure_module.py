@@ -41,6 +41,8 @@ from openfold.utils.tensor_utils import (
     flatten_final_dims,
 )
 
+from openfold.model.jk_sidechain_model import AngleTransformer
+
 attn_core_inplace_cuda = importlib.import_module("attn_core_inplace_cuda")
 
 
@@ -617,13 +619,32 @@ class StructureModule(nn.Module):
 
         self.bb_update = BackboneUpdate(self.c_s)
 
-        self.angle_resnet = AngleResnet(
-            self.c_s,
-            self.c_resnet,
-            self.no_resnet_blocks,
-            self.no_angles,
-            self.epsilon,
-        )
+        if kwargs['use_angle_transformer']:
+            self.angle_resnet = AngleTransformer(
+                self.c_s,
+                self.c_resnet,
+                self.no_resnet_blocks,
+                self.no_angles,
+                self.epsilon,
+                dropout=kwargs['angle_transformer_dropout'],
+                d_ff=kwargs['angle_transformer_dff'],
+                no_heads=kwargs['angle_transformer_heads'],
+            )
+        else:
+            self.angle_resnet = AngleResnet(
+                self.c_s,
+                self.c_resnet,
+                self.no_resnet_blocks,
+                self.no_angles,
+                self.epsilon,
+            )
+
+        # MOD-JK: If requested, finetune the angle predictor only
+        if kwargs['train_only_angle_predictor']:
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.angle_resnet.parameters():
+                param.requires_grad = True
 
     def forward(
         self,

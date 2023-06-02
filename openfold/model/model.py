@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import partial
+import logging
 import weakref
 
 import torch
@@ -111,6 +112,15 @@ class AlphaFold(nn.Module):
         self.aux_heads = AuxiliaryHeads(
             self.config["heads"],
         )
+
+        # MOD-JK: Freeze model components if we aim to finetune the angle pred only
+        if self.config['structure_module']['train_only_angle_predictor']:
+            logging.warning('Freezing all other model components except the angle predictor.')
+            for param in self.parameters():
+                param.requires_grad = False
+            for param in self.structure_module.parameters():
+                param.requires_grad = True
+
 
     def embed_templates(self, batch, z, pair_mask, templ_dim, inplace_safe): 
         if(self.template_config.offload_templates):

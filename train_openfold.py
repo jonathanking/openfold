@@ -541,6 +541,12 @@ def update_openmm_config(config, args):
     if args.openmm_warmup_steps is not None:
         config.loss.openmm.openmm_warmup_steps = args.openmm_warmup_steps
 
+    config.model.structure_module.use_angle_transformer = args.use_angle_transformer
+    config.model.structure_module.train_only_angle_predictor = args.train_only_angle_predictor
+    config.model.structure_module.angle_transfomer_dropout = args.angle_transfomer_dropout
+    config.model.structure_module.angle_transfomer_dff = args.angle_transfomer_dff
+    config.model.structure_module.angle_transfomer_heads = args.angle_transfomer_heads
+
 
 def update_experimental_config(config, args):
     if args.use_lma and args.use_flash_attn:
@@ -624,7 +630,7 @@ def main(args):
         # MOD-JK: there is no 'module.' prefix in the state dict; instead, it is missing the expected  `model.` prefix. This applies to initial_training and finetuning.pt files.
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
-        model_module.load_state_dict(sd)
+        model_module.load_state_dict(sd, strict=False)
         model_module.reinit_ema()  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.info("Successfully loaded model weights...")
     if(args.resume_from_jax_params):
@@ -1257,7 +1263,28 @@ if __name__ == "__main__":
                         type=str,
                         default="",
                         help="Path to the csv log file.")
-    
+    parser.add_argument("--use_angle_transfomer",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to use a Transformer for torsion angle prediction"
+                             " instead of the typical ResNet.")
+    parser.add_argument("--train_only_angle_predictor",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to train only the angle predictor. If True, all"
+                             "other parameters will be frozen for training.")
+    parser.add_argument("--angle_transformer_dropout",
+                        type=float,
+                        default=0.1,
+                        help="Dropout to use for the angle transformer.")
+    parser.add_argument("--angle_transformer_dff",
+                        type=int,
+                        default=2048,
+                        help="Dimension of FF layer to use for the angle transformer.")
+    parser.add_argument("--angle_transformer_heads",
+                        type=int,
+                        default=4,
+                        help="Number of heads to use for the angle transformer.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    
