@@ -697,7 +697,16 @@ def main(args):
             verbose=True,
             mode="max",
         )
-        callbacks.extend([mc, mc_last])
+        best_openmm = ModelCheckpoint(
+            every_n_epochs=1,
+            auto_insert_metric_name=False,
+            save_top_k=1,
+            monitor="val/openmm_unscaled",
+            verbose=True,
+            mode="min",
+            filename="{epoch}-{step}-bestopenmm"
+        )
+        callbacks.extend([mc, mc_last, best_openmm])
 
     if(args.early_stopping):
         es = EarlyStoppingVerbose(
