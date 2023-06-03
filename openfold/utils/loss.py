@@ -1649,14 +1649,13 @@ class AlphaFoldLoss(nn.Module):
             return cum_loss
 
         return cum_loss, losses
-    
 
     def _compute_openmm_loss_and_write_pdbs(self, loss_fn):
         """Compute the OpenMM loss and write out the predicted and true structures to PDBs.
-    
+
         Args:
             loss_fn: A function that computes the OpenMM loss when called.
-    
+
         Returns:
             **loss** (torch.Tensor): The OpenMM loss.
 
@@ -1686,9 +1685,9 @@ class AlphaFoldLoss(nn.Module):
                 wandb.save(pred_fn, base_path=base_path)
         elif self.config['openmm']['write_pdbs']:
             self.struct_idx += 1
-        
+
         # Log the OpenMM energy when OpenMM is allowed to add hydrogens
-        if self.mode != 'train':
+        if self.mode != 'train' and len(scn_proteins_pred):
             openmm_added_h_energy = scn_proteins_pred[0].get_energy(add_hydrogens_via_openmm=True, add_missing=True, return_unitless_kjmol=True)
 
         return loss, raw_energy, openmm_added_h_energy
