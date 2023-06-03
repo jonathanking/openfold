@@ -543,9 +543,9 @@ def update_openmm_config(config, args):
 
     config.model.structure_module.use_angle_transformer = args.use_angle_transformer
     config.model.structure_module.train_only_angle_predictor = args.train_only_angle_predictor
-    config.model.structure_module.angle_transfomer_dropout = args.angle_transfomer_dropout
-    config.model.structure_module.angle_transfomer_dff = args.angle_transfomer_dff
-    config.model.structure_module.angle_transfomer_heads = args.angle_transfomer_heads
+    config.model.structure_module.angle_transformer_dropout = args.angle_transformer_dropout
+    config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
+    config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
 
 
 def update_experimental_config(config, args):
