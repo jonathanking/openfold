@@ -84,7 +84,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=${RESUME_MODEL_WEIGHTS_ONLY} \
-    --train_epoch_len=1000 \
+    --train_epoch_len=3000 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
