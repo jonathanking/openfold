@@ -1263,7 +1263,7 @@ if __name__ == "__main__":
                         type=str,
                         default="",
                         help="Path to the csv log file.")
-    parser.add_argument("--use_angle_transfomer",
+    parser.add_argument("--use_angle_transformer",
                         type=bool_type,
                         default=False,
                         help="Whether to use a Transformer for torsion angle prediction"
