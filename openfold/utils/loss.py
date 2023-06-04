@@ -1623,7 +1623,7 @@ class AlphaFoldLoss(nn.Module):
                     losses["openmm_raw_energy"] = raw_energy.detach().clone()
                     losses['openmm_added_h_energy'] = openmm_added_h_energy
                 except:
-                    pass
+                    loss = torch.tensor(0.)
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
