@@ -1617,10 +1617,13 @@ class AlphaFoldLoss(nn.Module):
                 openmm_lr_modifier = self._openmm_scheduler.get_lr() if self._openmm_scheduler is not None else 1.0
                 weight = weight * openmm_lr_modifier
                 loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
-                losses["openmm_unscaled"] = loss.detach().clone()
-                losses["openmm_scaled"] = loss.detach().clone() * weight
-                losses["openmm_raw_energy"] = raw_energy.detach().clone()
-                losses['openmm_added_h_energy'] = openmm_added_h_energy
+                try:
+                    losses["openmm_unscaled"] = loss.detach().clone()
+                    losses["openmm_scaled"] = loss.detach().clone() * weight
+                    losses["openmm_raw_energy"] = raw_energy.detach().clone()
+                    losses['openmm_added_h_energy'] = openmm_added_h_energy
+                except:
+                    pass
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
