@@ -55,7 +55,7 @@ VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
 # CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
-CHECKPOINT=/zfs1/dkoes/jok120/openfold_out3/experiments/angletransformer-unmin-noomm-00/finetune-openfold-02/ldo0z1vf/checkpoints/13-321.ckpt
+CHECKPOINT=/zfs1/dkoes/jok120/openfold_out3/experiments/angletransformer-unmin-noomm-00/finetune-openfold-02/1myrv5zj/checkpoints/13-321.ckpt
 echo "Uses checkpoint $CHECKPOINT"
 
 if [[ "$CHECKPOINT" == *"initial_training.pt"* ]] || [[ "$CHECKPOINT" == *"finetuning_"* ]]; then
