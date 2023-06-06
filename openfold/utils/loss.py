@@ -1616,8 +1616,8 @@ class AlphaFoldLoss(nn.Module):
             if loss_name == "openmm":
                 openmm_lr_modifier = self._openmm_scheduler.get_lr() if self._openmm_scheduler is not None else 1.0
                 weight = weight * openmm_lr_modifier
-                loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                 try:
+                    loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                     losses["openmm_unscaled"] = loss.detach().clone()
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                     losses["openmm_raw_energy"] = raw_energy.detach().clone()
@@ -1663,6 +1663,10 @@ class AlphaFoldLoss(nn.Module):
             **loss** (torch.Tensor): The OpenMM loss.
 
         """
+        current_mode = self.mode
+        os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "true"),
+                    exist_ok=True)
+
         openmm_added_h_energy = 0.0
         loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
         if (
@@ -1674,10 +1678,10 @@ class AlphaFoldLoss(nn.Module):
                 # to make the filenames sort correctly
                 true_fn = os.path.join(
                     self.config.openmm.pdb_dir,
-                    f"true/true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                    f"{current_mode}/true/true_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
                 pred_fn = os.path.join(
                     self.config.openmm.pdb_dir,
-                    f"pred/pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
+                    f"{current_mode}/pred/pred_{self.struct_idx:04d}_{scn_proteins_true[0].id}.pdb")
                 scn_proteins_true[0].to_pdb(true_fn)
                 scn_proteins_pred[0].to_pdb(pred_fn)
                 self.struct_idx += 1

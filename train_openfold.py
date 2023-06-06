@@ -262,7 +262,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.ema.update(self.model)
 
     def validation_step(self, batch, batch_idx):
-        self.loss.mode = 'val'
+        self.loss.mode = 'val' if not self._test else 'test'
         # At the start of validation, load the EMA weights
         if(self.cached_weights is None):
             # model.state_dict() contains references to model weights rather

@@ -14,3 +14,5 @@
 "xfer-scnmin-omm-05","19qb4yhu","crc","Same as xfer-scnmin-omm-01, but scales omm by 1/10."
 "xfer-scnmin-omm-06g19","59vz9bsn","g019","Starts from initial training, 1k OMM warmup, no LR warmup. Val min."
 "4xmoredata_scnmin_omm_01","1xvryzvk","g019","Uses 30k alignments from standard trainin set + about 12k scnmin proteins for a total of about 4x more data."
+"30kpure-scnmin-omm-00b","2hp63mgt","g019","Uses about 32k minimized sidechainnet proteins and OMM loss. Starts from finetuning 5."
+"newbaseline-scnmin-noomm-00","3dq1jtox","crc","This is a new baseline trained on the updated 32k minimized scn proteins without OMM. Starts from finetuning 5."
