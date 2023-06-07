@@ -77,8 +77,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
     --gpus=4 \
-    --batch_size=2 \
-    --accumulate_grad_batches=16 \
+    --batch_size=1 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
