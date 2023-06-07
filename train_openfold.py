@@ -497,6 +497,8 @@ class OpenFoldWrapper(pl.LightningModule):
 
     def resume_last_lr_step(self, lr_step):
         self.last_lr_step = lr_step
+        if self.openmm_scheduler is None:
+            return
         self.openmm_scheduler.cur_step = lr_step
         cur_openmm = self.openmm_scheduler.get_lr()
         logging.warn(f"Resuming from lr step: {lr_step} with current openmm weight"
