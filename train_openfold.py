@@ -528,8 +528,8 @@ def update_openmm_config(config, args):
     config.loss.openmm.write_pdbs = args.write_pdbs
     config.loss.openmm.write_pdbs_every_n_steps = args.write_pdbs_every_n_steps
     config.loss.openmm.pdb_dir = os.path.join(args.output_dir, "pdbs")
-    for _subdir in ["true", "pred"]:
-        os.makedirs(os.path.join(config.loss.openmm.pdb_dir, _subdir), exist_ok=True)
+    # for _subdir in ["true", "pred"]:
+    #     os.makedirs(os.path.join(config.loss.openmm.pdb_dir, _subdir), exist_ok=True)
     config.loss.openmm.use_scn_pdb_names = args.use_scn_pdb_names
     config.loss.openmm.use_scn_pdb_names_val = args.use_scn_pdb_names_val
     config.loss.openmm.squashed_loss = args.openmm_squashed_loss

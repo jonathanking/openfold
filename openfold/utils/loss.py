@@ -1669,6 +1669,8 @@ class AlphaFoldLoss(nn.Module):
         current_mode = self.mode
         os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "true"),
                     exist_ok=True)
+        os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "pred"),
+                    exist_ok=True)
 
         loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
         if (
