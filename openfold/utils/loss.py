@@ -1617,13 +1617,16 @@ class AlphaFoldLoss(nn.Module):
                 openmm_lr_modifier = self._openmm_scheduler.get_lr() if self._openmm_scheduler is not None else 1.0
                 weight = weight * openmm_lr_modifier
                 try:
-                    loss, raw_energy, openmm_added_h_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
+                    loss, raw_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
                     losses["openmm_unscaled"] = loss.detach().clone()
                     losses["openmm_scaled"] = loss.detach().clone() * weight
                     losses["openmm_raw_energy"] = raw_energy.detach().clone()
-                    losses['openmm_added_h_energy'] = openmm_added_h_energy
-                except:
+                except Exception as e:
+                    logging.warning(f"OpenMM loss failed with exception: {e}")
                     loss = torch.tensor(0.)
+                    losses["openmm_unscaled"] = torch.nan
+                    losses["openmm_scaled"] = torch.nan
+                    losses["openmm_raw_energy"] = torch.nan
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
@@ -1667,7 +1670,6 @@ class AlphaFoldLoss(nn.Module):
         os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "true"),
                     exist_ok=True)
 
-        openmm_added_h_energy = 0.0
         loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
         if (
             self.config['openmm']['write_pdbs'] and 
@@ -1693,8 +1695,4 @@ class AlphaFoldLoss(nn.Module):
         elif self.config['openmm']['write_pdbs']:
             self.struct_idx += 1
 
-        # Log the OpenMM energy when OpenMM is allowed to add hydrogens
-        if self.mode != 'train' and len(scn_proteins_pred):
-            openmm_added_h_energy = scn_proteins_pred[0].get_energy(add_hydrogens_via_openmm=True, add_missing=True, return_unitless_kjmol=True)
-
-        return loss, raw_energy, openmm_added_h_energy
+        return loss, raw_energy
