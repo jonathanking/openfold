@@ -7,6 +7,8 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
+import argparse
+
 
 
 def compute_cadaa_score(model_file, target_file, mode='AA'):
@@ -32,11 +34,14 @@ def compute_all_cadaa_scores(model_dir_dir, mode='AA'):
         eval_model_scores[model_name] = {}
 
     # Get CAD-AA scores for the models
-    for eval_model_name in eval_model_names[:2]:
+    for eval_model_name in eval_model_names:
         model_dir = os.path.join(model_dir_dir, eval_model_name)
-        model_pdbs = glob.glob(os.path.join(model_dir, 'pdbs', 'pred', '*.pdb'))
+        model_pdbs = list(glob.glob(os.path.join(model_dir, 'pdbs', 'val', 'pred', '*.pdb')))
+        model_pdbs += list(glob.glob(os.path.join(model_dir, 'pdbs', 'test', 'pred', '*.pdb')))
+        print("Example model_pdbs: ", model_pdbs[:10])
 
-        for model_pdb in model_pdbs[:7]:
+
+        for model_pdb in model_pdbs:
             target_pdb = model_pdb.replace('pred', 'true')
             model_pdb_name = os.path.basename(model_pdb).split('.')[0][10:]
             print(model_pdb_name)
@@ -60,7 +65,8 @@ def compute_all_cadaa_scores_parallel(model_dir_dir, mode='AA', max_workers=None
     tasks = []
     for eval_model_name in eval_model_names:
         model_dir = os.path.join(model_dir_dir, eval_model_name)
-        model_pdbs = glob.glob(os.path.join(model_dir, 'pdbs', 'pred', '*.pdb'))
+        model_pdbs = list(glob.glob(os.path.join(model_dir, 'pdbs', 'val', 'pred', '*.pdb')))
+        model_pdbs += list(glob.glob(os.path.join(model_dir, 'pdbs', 'test', 'pred', '*.pdb')))
         for model_pdb in model_pdbs:
             tasks.append((eval_model_name, model_pdb))
 
@@ -76,7 +82,6 @@ def compute_all_cadaa_scores_parallel(model_dir_dir, mode='AA', max_workers=None
 
 def main(model_dir_dir, cad_mode, output_csv):
     """Main function."""
-    
     eval_model_scores = compute_all_cadaa_scores_parallel(model_dir_dir, mode=cad_mode)
     eval_model_scores_df = pd.DataFrame(eval_model_scores)
     eval_model_scores_df.index.name = 'protein_name'
@@ -87,8 +92,8 @@ def main(model_dir_dir, cad_mode, output_csv):
 if __name__ == "__main__":
     # use argparse to get the model_dir_dir, cad_mode, and output_csv
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("model_dir_dir", type=str, help="Directory containing the model directories.", default="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230507")
-    argparser.add_argument("cad_mode", type=str, help="CAD mode to use.", default="AA")
-    argparser.add_argument("output_csv", type=str, help="Output csv file.", default="cadaa_scores.csv")
+    argparser.add_argument("--model_dir_dir", type=str, help="Directory containing the model directories.", default="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607")
+    argparser.add_argument("--cad_mode", type=str, help="CAD mode to use.", default="AA")
+    argparser.add_argument("--output_csv", type=str, help="Output csv file.", default="cadaa_scores.csv")
     args = argparser.parse_args()
     main(args.model_dir_dir, args.cad_mode, args.output_csv)
