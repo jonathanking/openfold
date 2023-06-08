@@ -1,0 +1,8 @@
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/30kpure_scnmin_omm_00b_eval_s1224/pdbs/test/pred" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/30kpure_scnmin_omm_00b_eval_s1224/pdbs/test/true" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/30kpure_scnmin_omm_00b_eval_s1224/pdbs/val/pred" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/30kpure_scnmin_omm_00b_eval_s1224/pdbs/val/true" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/newbaseline_scnmin_noomm_00_eval_s958/pdbs/test/pred" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/newbaseline_scnmin_noomm_00_eval_s958/pdbs/val/pred" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/newbaseline_scnmin_noomm_00_eval_s958/pdbs/test/true" --device='gpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230607/newbaseline_scnmin_noomm_00_eval_s958/pdbs/val/true" --device='gpu' --run_molprobity

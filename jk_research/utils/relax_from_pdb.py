@@ -46,9 +46,9 @@ def create_results_csv(paths_times, output_csv_path):
     with open(output_csv_path, "w") as f:
         f.write("protein_name,relaxation_time\n")
         for path_time in paths_times:
-            paths = path_time[0]
+            path = path_time[0]
             time = path_time[1]
-            protein_name = os.path.basename(paths[0]).split(".")[0]
+            protein_name = os.path.basename(path).split(".")[0]
             f.write(f"{protein_name},{time}\n")
 
 
@@ -67,7 +67,7 @@ def main():
                        type=str,
                        help="Path to a directory of PDB files to relax.")
 
-    group2 = parser.add_mutually_exclusive_group(required=True)
+    group2 = parser.add_mutually_exclusive_group(required=False)
     group2.add_argument("--relaxed_pdb_directory",
                         type=str,
                         help="Path to a directory to write the relaxed PDB files to.")
@@ -88,16 +88,23 @@ def main():
     if args.run_molprobity and args.pdb_path:
         raise ValueError("Cannot run MolProbity on a single PDB file.")
 
+    if args.pdb_directory and not args.relaxed_pdb_directory:
+        args.relaxed_pdb_directory = args.pdb_directory + "_relaxed"
+
 
     print("Relaxing proteins...", end="")
+
     if args.pdb_path:
         times = relax_single_protein_from_pdb_path(args.pdb_path, args.relaxed_pdb_path,
                                                    args.device)
     elif args.pdb_directory:
+        os.makedirs(args.relaxed_pdb_directory, exist_ok=True)
         times = relax_proteins_from_pdb_directory(args.pdb_directory,
                                                   args.relaxed_pdb_directory, args.device)
     print(" done.", end=" ")
 
+    if not args.output_csv_path:
+        args.output_csv_path = os.path.join(args.relaxed_pdb_directory, "relaxation_times.csv")
     create_results_csv(times, args.output_csv_path)
     print(f"Relaxation results written to {args.output_csv_path}")
 
