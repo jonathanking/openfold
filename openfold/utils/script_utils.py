@@ -228,7 +228,7 @@ def prep_output(out, batch, feature_dict, feature_processor, config_preset, mult
     return unrelaxed_protein
 
 
-def relax_protein(config, model_device, unrelaxed_protein, output_directory, output_name):
+def relax_protein(config, model_device, unrelaxed_protein, output_directory, output_name, return_time=False):
     amber_relaxer = relax.AmberRelaxation(
         use_gpu=(model_device != "cpu"),
         **config.relax,
@@ -254,3 +254,6 @@ def relax_protein(config, model_device, unrelaxed_protein, output_directory, out
         fp.write(relaxed_pdb_str)
 
     logger.info(f"Relaxed output written to {relaxed_output_path}...")
+
+    if return_time:
+        return relaxation_time
