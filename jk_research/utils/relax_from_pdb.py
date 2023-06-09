@@ -19,7 +19,11 @@ def get_openfold_protein_from_path(path):
 
 def relax_single_protein_from_pdb_path(pdb_path, relaxed_pdb_path, model_device):
     config = model_config(CONFIG_PRESET)
-    unrelaxed_protein = get_openfold_protein_from_path(pdb_path)
+    try:
+        unrelaxed_protein = get_openfold_protein_from_path(pdb_path)
+    except ValueError:
+        print(f"Failed to parse {pdb_path}. Skipping.")
+        return [(pdb_path, -1)]
     output_directory = os.path.dirname(relaxed_pdb_path)
     output_name = os.path.basename(pdb_path).split(".")[0]
 
