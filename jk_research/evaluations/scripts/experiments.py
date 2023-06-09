@@ -52,7 +52,7 @@ class Experiment:
         self.template_structures_dir = "data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/"
         self.train_cache = "data/caches/chain_data_cache_rodasnapshot_clustered.json"
         self.template_cache = "data/caches/mmcif_cache_rodasnapshot.json"
-        self.resume_model_weights_only = True if "initial_training" in self.exp_name else False
+        self.resume_model_weights_only = True if "initial_training" in self.exp_name or "finetuning_" in self.exp_name else False
 
         self.module_loads = "module load cuda/11.3.0\nmodule load gcc/8.2.0" if self.location == "crc" else "module load cuda/11.5"
 

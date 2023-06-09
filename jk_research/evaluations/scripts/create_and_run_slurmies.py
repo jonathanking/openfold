@@ -12,6 +12,8 @@ def get_checkpoint_path(row):
     """Get the path to the checkpoint to use for an evaluation experiment."""
     if row['exp_name'] == 'initial_training':
         return "openfold/resources/openfold_params/initial_training.pt"
+    elif 'finetuning_' in row['exp_name']:
+        return f"openfold/resources/openfold_params/{row['exp_name']}.pt"
     if row["exp_suffix"] == "eval_sx":
         # Find the filename with the highest epoch number
         files = os.listdir(f"{row['exp_dir']}/checkpoints")
@@ -70,7 +72,7 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
 
     # get the step from the checkpoint path
     def get_step(row):
-        if row['exp_name'] == 'initial_training':
+        if row['exp_name'] == 'initial_training' or 'finetuning_' in row['exp_name']:
             return 0
         else:
             return int(row['checkpoint_path'].split('/')[-1].split('-')[1].split('.')[0])
