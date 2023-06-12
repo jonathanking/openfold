@@ -549,6 +549,8 @@ def update_openmm_config(config, args):
     config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
     config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
 
+    config.loss.openmm.add_relu = args.add_relu_to_omm_loss
+
 
 def update_experimental_config(config, args):
     if args.use_lma and args.use_flash_attn:
@@ -1287,6 +1289,10 @@ if __name__ == "__main__":
                         type=int,
                         default=4,
                         help="Number of heads to use for the angle transformer.")
+    parser.add_argument("--add_relu_to_omm_loss",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to add a ReLU to the OpenMM loss.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    

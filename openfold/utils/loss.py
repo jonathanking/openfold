@@ -1599,7 +1599,8 @@ class AlphaFoldLoss(nn.Module):
                 squash=self.config.openmm["squashed_loss"],
                 squash_factor=self.config.openmm["squashed_loss_factor"],  
                 modified_sigmoid=self.config.openmm["modified_sigmoid"],
-                modified_sigmoid_params=self.config.openmm["modified_sigmoid_params"],              
+                modified_sigmoid_params=self.config.openmm["modified_sigmoid_params"],
+                add_relu=self.config.openmm["add_relu"],
             ),
         }
 

@@ -694,6 +694,7 @@ config = mlc.ConfigDict(
                 "modified_sigmoid_params": (1,1,1,1),
                 "use_openmm_warmup": False,
                 "openmm_warmup_steps": 1000,
+                "add_relu": False,
             },
         },
         "ema": {"decay": 0.999},
