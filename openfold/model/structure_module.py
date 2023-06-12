@@ -623,7 +623,7 @@ class StructureModule(nn.Module):
             self.angle_resnet = AngleTransformer(
                 self.c_s,
                 self.c_resnet,
-                self.no_resnet_blocks,
+                kwargs['angle_transformer_layers'],
                 self.no_angles,
                 self.epsilon,
                 dropout=kwargs['angle_transformer_dropout'],

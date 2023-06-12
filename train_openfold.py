@@ -548,6 +548,7 @@ def update_openmm_config(config, args):
     config.model.structure_module.angle_transformer_dropout = args.angle_transformer_dropout
     config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
     config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
+    config.model.structure_module.angle_transformer_layers = args.angle_transformer_layers
 
     config.loss.openmm.add_relu = args.add_relu_to_omm_loss
 
@@ -1289,6 +1290,10 @@ if __name__ == "__main__":
                         type=int,
                         default=4,
                         help="Number of heads to use for the angle transformer.")
+    parser.add_argument("--angle_transformer_layers",
+                        type=int,
+                        default=2,
+                        help="Number of layers to use for the angle transformer.")
     parser.add_argument("--add_relu_to_omm_loss",
                         type=bool_type,
                         default=False,

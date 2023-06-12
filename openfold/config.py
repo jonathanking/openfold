@@ -580,6 +580,7 @@ config = mlc.ConfigDict(
                 "angle_transformer_dropout": 0.1,
                 "angle_transformer_dff": 2048,
                 "angle_transformer_heads": 4,
+                "angle_transformer_layers": 2,
                 "train_only_angle_predictor": False,
 
             },
