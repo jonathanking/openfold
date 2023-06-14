@@ -118,7 +118,7 @@ class AlphaFold(nn.Module):
             logging.warning('Freezing all other model components except the angle predictor.')
             for param in self.parameters():
                 param.requires_grad = False
-            for param in self.structure_module.parameters():
+            for param in self.structure_module.angle_resnet.parameters():
                 param.requires_grad = True
 
 

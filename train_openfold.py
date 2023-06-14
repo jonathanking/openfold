@@ -549,6 +549,10 @@ def update_openmm_config(config, args):
     config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
     config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
     config.model.structure_module.angle_transformer_layers = args.angle_transformer_layers
+    if args.angle_loss_only:
+        for loss_key in ['distogram', 'experimentally_resolved', 'fape', 'plddt_loss',
+                         'masked_msa', 'violation', 'tm']:
+            setattr(config.loss, loss_key, 0)
 
     config.loss.openmm.add_relu = args.add_relu_to_omm_loss
 
@@ -1298,6 +1302,10 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to add a ReLU to the OpenMM loss.")
+    parser.add_argument("--angle_loss_only",
+                        type=bool_type,
+                        default=False,
+                        help="If true, set all loss weights to 0 except supervised_chi.")
     
     parser = pl.Trainer.add_argparse_args(parser)
    
