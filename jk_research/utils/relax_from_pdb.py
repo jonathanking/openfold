@@ -87,6 +87,10 @@ def main():
                         action="store_true",
                         help="Whether to run MolProbity on both "
                         "the unrelaxed and relaxed PDB files.")
+    parser.add_argument("--skip_relaxation",
+                        action="store_true",
+                        help="Whether to skip the relaxation step and just "
+                        "run MolProbity.")
     args = parser.parse_args()
 
     if args.run_molprobity and args.pdb_path:
@@ -95,22 +99,26 @@ def main():
     if args.pdb_directory and not args.relaxed_pdb_directory:
         args.relaxed_pdb_directory = args.pdb_directory + "_relaxed"
 
+    if args.skip_relaxation:
+        print("Skipping relaxation step.")
+    else:
+        print("Relaxing proteins...", end="")
 
-    print("Relaxing proteins...", end="")
+        if args.pdb_path:
+            times = relax_single_protein_from_pdb_path(args.pdb_path,
+                                                       args.relaxed_pdb_path, args.device)
+        elif args.pdb_directory:
+            os.makedirs(args.relaxed_pdb_directory, exist_ok=True)
+            times = relax_proteins_from_pdb_directory(args.pdb_directory,
+                                                      args.relaxed_pdb_directory,
+                                                      args.device)
+        print(" done.", end=" ")
 
-    if args.pdb_path:
-        times = relax_single_protein_from_pdb_path(args.pdb_path, args.relaxed_pdb_path,
-                                                   args.device)
-    elif args.pdb_directory:
-        os.makedirs(args.relaxed_pdb_directory, exist_ok=True)
-        times = relax_proteins_from_pdb_directory(args.pdb_directory,
-                                                  args.relaxed_pdb_directory, args.device)
-    print(" done.", end=" ")
-
-    if not args.output_csv_path:
-        args.output_csv_path = os.path.join(args.relaxed_pdb_directory, "relaxation_times.csv")
-    create_results_csv(times, args.output_csv_path)
-    print(f"Relaxation results written to {args.output_csv_path}")
+        if not args.output_csv_path:
+            args.output_csv_path = os.path.join(args.relaxed_pdb_directory,
+                                                "relaxation_times.csv")
+        create_results_csv(times, args.output_csv_path)
+        print(f"Relaxation results written to {args.output_csv_path}")
 
     if args.run_molprobity:
         print("Running MolProbity...", end="")
