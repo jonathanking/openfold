@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bslnb
+#SBATCH --job-name=ReLUb
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --time=6-00:00:00
