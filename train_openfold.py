@@ -552,11 +552,11 @@ def update_openmm_config(config, args):
     if args.angle_loss_only:
         for loss_key in ['distogram', 'experimentally_resolved', 'fape', 'plddt_loss',
                          'masked_msa', 'violation', 'tm', 'openmm']:
-            config.loss[loss_key] = 0.
+            config.loss[loss_key].weight = 0.
     if args.angle_like_loss_only:
         for loss_key in ['distogram', 'experimentally_resolved', 'plddt_loss',
                          'masked_msa', 'tm', 'openmm']:
-            config.loss[loss_key] = 0.
+            config.loss[loss_key].weight = 0.
 
     config.loss.openmm.add_relu = args.add_relu_to_omm_loss
 
