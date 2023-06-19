@@ -120,7 +120,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --train_only_angle_predictor=True \
     --angle_transformer_layers=4 \
     --angle_transformer_heads=8 \
-    --angle_loss_only=True \
+    --angle_loss_only=False \
+    --angle_like_loss_only=True
 
 
     
