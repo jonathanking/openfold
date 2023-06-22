@@ -1645,7 +1645,7 @@ class AlphaFoldLoss(nn.Module):
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
-            elif loss_name == "superivsed_chi":
+            elif loss_name == "supervised_chi":
                 loss_dict = loss_fn()
                 loss = loss_dict["loss"]
                 losses["sq_chi_loss"] = loss_dict["sq_chi_loss"]
