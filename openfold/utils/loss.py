@@ -376,7 +376,8 @@ def supervised_chi_loss(
 
     # Compute the MAE so we know exactly how good the angle prediction is in Radians
     pred = torch.transpose(pred_angles.clone(), 0, 1)  # [1, 8, 256, 4, 2]
-    pred = torch.mean(pred, 1)  # [1, 256, 4, 2]
+    pred = pred[:, -1, :, :, :]  # [1, 1, 256, 4, 2]
+    pred = pred.reshape(pred.shape[0], pred.shape[-3], pred.shape[-2], pred.shape[-1])  # [1, 256, 4, 2]
     true_chi2 = chi_angles_sin_cos.clone()  # [1, 256, 4, 2]
     true_chi2 = inverse_trig_transform(true_chi2, 4)  # [1, 256, 4]
     pred = inverse_trig_transform(pred, 4)  # [1, 256, 4]
