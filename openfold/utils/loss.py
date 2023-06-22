@@ -35,6 +35,8 @@ from openfold.utils.tensor_utils import (
 )
 
 from sidechainnet.research.openfold.openfold_loss import openmm_loss
+from sidechainnet.structure import inverse_trig_transform
+from sidechainnet.examples.losses import angle_mae
 import wandb
 
 
@@ -324,7 +326,7 @@ def supervised_chi_loss(
         Returns:
             [*] loss tensor
     """
-    pred_angles = angles_sin_cos[..., 3:, :]
+    pred_angles = angles_sin_cos[..., 3:, :]  # [8, 1, 256, 4, 2]
     residue_type_one_hot = torch.nn.functional.one_hot(
         aatype,
         residue_constants.restype_num + 1,
@@ -335,7 +337,7 @@ def supervised_chi_loss(
         angles_sin_cos.new_tensor(residue_constants.chi_pi_periodic),
     )
 
-    true_chi = chi_angles_sin_cos[None]
+    true_chi = chi_angles_sin_cos[None]  # [1, 1, 256, 4, 2]
 
     shifted_mask = (1 - 2 * chi_pi_periodic).unsqueeze(-1)
     true_chi_shifted = shifted_mask * true_chi
@@ -372,7 +374,19 @@ def supervised_chi_loss(
     # Average over the batch dimension
     loss = torch.mean(loss)
 
-    return loss
+    # Compute the MAE so we know exactly how good the angle prediction is in Radians
+    pred = torch.transpose(pred_angles.clone(), 0, 1)  # [1, 8, 256, 4, 2]
+    pred = torch.mean(pred, 1)  # [1, 256, 4, 2]
+    true_chi2 = chi_angles_sin_cos.clone()  # [1, 256, 4, 2]
+    true_chi2 = inverse_trig_transform(true_chi2, 4)  # [1, 256, 4]
+    pred = inverse_trig_transform(pred, 4)  # [1, 256, 4]
+    true_chi2 = true_chi2.masked_fill_(~chi_mask.bool(), torch.nan)
+    pred = pred.masked_fill_(~chi_mask.bool(), torch.nan)
+    mae = angle_mae(true_chi2, pred)
+
+    loss_dict = {"loss": loss, "sq_chi_loss": sq_chi_loss, "angle_norm_loss": angle_norm_loss, "angle_mae": mae}
+
+    return loss_dict
 
 
 def compute_plddt(logits: torch.Tensor) -> torch.Tensor:
@@ -1631,7 +1645,12 @@ class AlphaFoldLoss(nn.Module):
                 # Overwrite loss if we're not using openmm
                 if not self.config.openmm.use_openmm:
                     loss = torch.tensor(0.)
-
+            elif loss_name == "superivsed_chi":
+                loss_dict = loss_fn()
+                loss = loss_dict["loss"]
+                losses["sq_chi_loss"] = loss_dict["sq_chi_loss"]
+                losses["angle_norm_loss"] = loss_dict["angle_norm_loss"]
+                losses['angle_mae'] = loss_dict['angle_mae']
             else:
                 loss = loss_fn()
             if (torch.isnan(loss) or torch.isinf(loss)):
