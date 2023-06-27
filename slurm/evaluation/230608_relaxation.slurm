@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:0
 #SBATCH -c 16
-#SBATCH --time=14-00:00:00
+#SBATCH --time=0-02:00:00
 #SBATCH --partition=dept_cpu
 #SBATCH --output="/net/pulsar/home/koes/jok120/openfold/out/%A_%6a.out"
 

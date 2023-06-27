@@ -26,3 +26,11 @@ python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koe
 python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230612/newbaseline_scnmin_noomm_00b_eval_sOMM/pdbs/val/true" --device='gpu' --run_molprobity --skip_relaxation
 python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230612/30kpure_scnmin_omm_00b_eval_sOMM/pdbs/test/true" --device='gpu' --run_molprobity --skip_relaxation
 python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230612/30kpure_scnmin_omm_00b_eval_sOMM/pdbs/val/true" --device='gpu' --run_molprobity --skip_relaxation
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpureReLU_scnmin_omm_00d_eval_sOMM/pdbs/test/pred" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpureReLU_scnmin_omm_00d_eval_sOMM/pdbs/val/pred" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpureReLU_scnmin_omm_00d_eval_sOMM/pdbs/test/true" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpureReLU_scnmin_omm_00d_eval_sOMM/pdbs/val/true" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpure_scnunmin_omm_00_eval_sOMM/pdbs/test/pred" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpure_scnunmin_omm_00_eval_sOMM/pdbs/val/pred" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpure_scnunmin_omm_00_eval_sOMM/pdbs/test/true" --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory="/net/pulsar/home/koes/jok120/openfold/out/evaluation/230627/30kpure_scnunmin_omm_00_eval_sOMM/pdbs/val/true" --device='cpu' --run_molprobity
