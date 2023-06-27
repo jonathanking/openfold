@@ -18,3 +18,4 @@
 "30kpure-scnmin-omm-00b","2hp63mgt","g019","Uses about 32k minimized sidechainnet proteins and OMM loss. Starts from finetuning 5."
 "newbaseline-scnmin-noomm-00","3dq1jtox","crc","This is a new baseline trained on the updated 32k minimized scn proteins without OMM. Starts from finetuning 5."
 "newbaseline-scnmin-noomm-00b","14bxedop","crc","Continuation of newbaseline-scnmin-noomm-00."
+"30kpureReLU-scnmin-omm-00d","5lsm7o50","crc","Continuation of 30kpure-scnmin-omm-00b."
