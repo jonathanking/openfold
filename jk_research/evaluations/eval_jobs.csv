@@ -1,22 +1,24 @@
-exp_suffix,"exp_name","eval_me"
-eval_s0,"initial_training","False"
-eval_s945,"baseline-scnmin-noomm-00","False"
-eval_sx,"baseline-scnmin-noomm-00","False"
-eval_sx,"baseline-scnmin-omm-00c","False"
-eval_sx,"xfer-scnmin-omm-01","False"
-eval_sx,"xfer-scnmin-omm-02","False"
-eval_sx,"xfer-scnmin-omm-03","False"
-eval_sx,"xfer-scnmin-omm-04","False"
-eval_sx,"xfer-scnmin-omm-05","False"
-eval_s777,"xfer-scnmin-omm-06g19","False"
-eval_s777,"baseline-scnmin-noomm-00","False"
-eval_s777,"xfer-scnmin-omm-04","False"
-eval_sx,"xfer-scnmin-omm-06g19","False"
-eval_sx,"4xmoredata_scnmin_omm_01","False"
-eval_sx,"30kpure-scnmin-omm-00b","False"
-eval_sx,"newbaseline-scnmin-noomm-00","False"
-eval_s0,"finetuning_5","False"
-eval_sOMM,"30kpure-scnmin-omm-00b","False"
-eval_sOMM,"newbaseline-scnmin-noomm-00b","False"
-eval_sOMM,"30kpureReLU-scnmin-omm-00d","False"
-eval_sOMM,"30kpure-scnunmin-omm-00","True"
+exp_suffix,"exp_name","eval_me",notes
+eval_s0,"initial_training","False",
+eval_s945,"baseline-scnmin-noomm-00","False",
+eval_sx,"baseline-scnmin-noomm-00","False",
+eval_sx,"baseline-scnmin-omm-00c","False",
+eval_sx,"xfer-scnmin-omm-01","False",
+eval_sx,"xfer-scnmin-omm-02","False",
+eval_sx,"xfer-scnmin-omm-03","False",
+eval_sx,"xfer-scnmin-omm-04","False",
+eval_sx,"xfer-scnmin-omm-05","False",
+eval_s777,"xfer-scnmin-omm-06g19","False",
+eval_s777,"baseline-scnmin-noomm-00","False",
+eval_s777,"xfer-scnmin-omm-04","False",
+eval_sx,"xfer-scnmin-omm-06g19","False",
+eval_sx,"4xmoredata_scnmin_omm_01","False",
+eval_sx,"30kpure-scnmin-omm-00b","False",
+eval_sx,"newbaseline-scnmin-noomm-00","False",
+eval_s0,"finetuning_3","False",AF2 seed 3
+eval_s0,"finetuning_4","False",AF2 seed 4
+eval_s0,"finetuning_5","True",AF2 seed 5
+eval_sOMM,"30kpure-scnmin-omm-00b","True",AF2 + scnmin + OMM
+eval_SOMM,"newbaseline-scnmin-noomm-00b","True",AF2 + scnmin
+eval_sOMM,"30kpureReLU-scnmin-omm-00d","True",AF2 + scnmin + OMM*
+eval_sOMM,"30kpure-scnunmin-omm-00","True",AF2 + OMM
