@@ -73,8 +73,6 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
         print(df["exp_dir"].values)
         print("Exiting...")
         exit()
-    
-    print(df)
 
     df["checkpoint_path"] = df.apply(get_checkpoint_path, axis=1)
 

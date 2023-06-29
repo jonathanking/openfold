@@ -1,5 +1,7 @@
 "exp_name","wandb_id","location","notes"
 "initial_training","None","g019","Initial training checkpoint used to seed other runs."
+"finetuning_3","None","crc","Initial training checkpoint (finetuning_5.pt) used to seed other runs."
+"finetuning_4","None","crc","Initial training checkpoint (finetuning_5.pt) used to seed other runs."
 "finetuning_5","None","crc","Initial training checkpoint (finetuning_5.pt) used to seed other runs."
 "baseline-scnmin-noomm-00","3lzb4s3o","g019","Our baseline on scnmin data. Overfits the data."
 "baseline-unmin-noomm-00","2enwnffe","g019","Could be trained longer ""The true baseline"""
