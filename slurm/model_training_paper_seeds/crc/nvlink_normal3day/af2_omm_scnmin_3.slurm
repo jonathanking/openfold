@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=su3omm
+#SBATCH --job-name=sm3ommN
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=6-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --partition=a100_nvlink
-#SBATCH --qos=long
+#SBATCH --qos=normal
 #SBATCH --cluster=gpu
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="30kpure-scnunmin-omm-03"
+EXPERIMENT_ID="30kpure-scnmin-omm-03"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "The biggest change here is using a much larger training set after generating MSAs."
 echo "Warmup OpenMM over 1000 steps. 4 gpus x 1 nodes."
@@ -44,13 +44,13 @@ mkdir -p ${OUTDIR}
 # The structure directory and caches can contain more structures than the aln dir.
 # The train_structures_dir here contains only the scnmin structs as of 230530 (30k).
 
-TRAIN_STRUCTURES_DIR=data/train_structs/scnunmin_structs0530/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  # Modified.  
+TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530/
+ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  # Modified.
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 TRAIN_CACHE=data/caches/scnmin_structs0530_cache.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
-VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
-VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
+VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
+VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
 # CHECKPOINT=/net/pulsar/home/koes/jok120/research_openfold/experiments/30kpure-scnmin-omm-00/finetune-openfold-02/etvqd7tt/checkpoints/89-629.ckpt
 CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
@@ -105,8 +105,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="omm,scnunmin,omm-warmup,valmin,more-data,more-pure-data" \
-    --wandb_note="Seed 3. More 'pure' training data. Unmin only! Resume from finetuning_5. Valmin. OMM warmup over 1000 steps. Skips standard warmup." \
+    --wandb_tags="omm,scnmin,omm-warmup,valmin,more-data,more-pure-data" \
+    --wandb_note="Seed 3. More 'pure' training data. Resume from finetuning_5. Valmin. OMM warmup over 1000 steps. Skips standard warmup." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \

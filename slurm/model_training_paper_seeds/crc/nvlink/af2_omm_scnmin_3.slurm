@@ -45,7 +45,7 @@ mkdir -p ${OUTDIR}
 # The train_structures_dir here contains only the scnmin structs as of 230530 (30k).
 
 TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530_prefer_old_alns/  
+ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  # Modified.
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 TRAIN_CACHE=data/caches/scnmin_structs0530_cache.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
