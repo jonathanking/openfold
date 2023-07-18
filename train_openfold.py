@@ -164,8 +164,6 @@ class OpenFoldWrapper(pl.LightningModule):
             )
 
         for k, v in other_metrics.items():
-            if not train and k == "lddt_ca":
-                print(f"lddt_ca: {v.item()}")
             self.log(f"{phase}/{k}", v, on_step=train, on_epoch=True, logger=True)
         
         if self.config.logging.log_to_csv:
