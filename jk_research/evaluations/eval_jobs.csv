@@ -15,10 +15,18 @@ eval_sx,"xfer-scnmin-omm-06g19","False",
 eval_sx,"4xmoredata_scnmin_omm_01","False",
 eval_sx,"30kpure-scnmin-omm-00b","False",
 eval_sx,"newbaseline-scnmin-noomm-00","False",
-eval_s0,"finetuning_3","True",AF2 seed 3
-eval_s0,"finetuning_4","True",AF2 seed 4
-eval_s0,"finetuning_5","True",AF2 seed 5
-eval_sOMM,"30kpure-scnmin-omm-00b","True",AF2 + scnmin + OMM
-eval_sOMM,"newbaseline-scnmin-noomm-00b","True",AF2 + scnmin
-eval_sOMM,"30kpureReLU-scnmin-omm-00d","True",AF2 + scnmin + OMM*
-eval_sOMM,"30kpure-scnunmin-omm-00","True",AF2 + OMM
+eval_s0,"finetuning_3","False",AF2 seed 3
+eval_s0,"finetuning_4","False",AF2 seed 4
+eval_s0,"finetuning_5","False",AF2 seed 5
+eval_sOMM,"30kpure-scnmin-omm-00b","False",AF2 + scnmin + OMM
+eval_sOMM,"newbaseline-scnmin-noomm-00b","False",AF2 + scnmin
+eval_sOMM,"30kpureReLU-scnmin-omm-00d","False",AF2 + scnmin + OMM*
+eval_sOMM,"30kpure-scnunmin-omm-00","False",AF2 + OMM
+eval_sOMM,"newbaseline-scnmin-noomm-04b","True",Paper seed.
+eval_sOMM,"newbaseline-scnmin-noomm-03","True",Paper seed.
+eval_sOMM,"30kpureReLU-scnmin-omm-04","True",Paper seed.
+eval_sOMM,"30kpureReLU-scnmin-omm-03","True",Paper seed.
+eval_sOMM,"30kpure-scnunmin-omm-04","True",Paper seed.
+eval_sOMM,"30kpure-scnunmin-omm-03","True",Paper seed.
+eval_sOMM,"30kpure-scnmin-omm-04b","True",Paper seed.
+eval_sOMM,"30kpure-scnmin-omm-03b","True",Paper seed.
