@@ -10,7 +10,6 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=64
-#SBATCH --constraint=80g
 
 
 
