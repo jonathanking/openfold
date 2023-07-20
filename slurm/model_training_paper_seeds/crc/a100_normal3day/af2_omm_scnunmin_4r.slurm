@@ -52,6 +52,7 @@ VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
 # CHECKPOINT=/net/pulsar/home/koes/jok120/research_openfold/experiments/30kpure-scnmin-omm-00/finetune-openfold-02/etvqd7tt/checkpoints/89-629.ckpt
+PREV_EXPERIMENT_OUTDIR="30kpure-scnunmin-omm-04r"
 CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
 
