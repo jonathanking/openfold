@@ -7,7 +7,8 @@
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=42
+#SBATCH --nodelist=g019
 
 
 ############################
@@ -107,18 +108,20 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm=False \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="atf,encoder-only,baseline" \
+    --wandb_tags="atf,encoder-only,baseline,eval" \
     --wandb_note="AngTran baseline. Uses resnet defualt. Freezes all layers. finetuning_5.pt. " \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
-    --run_validate_first=True \
+    --run_validate_first=False \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
     --use_angle_transformer=False \
     --train_only_angle_predictor=True \
-    --trainer_mode=validate-val
+    --trainer_mode=validate-test \
+    --test_data_dir=data/test/cameo/20230103/data_dir \
+    --test_alignment_dir=data/test/cameo/20230103/alignments
 
 
     

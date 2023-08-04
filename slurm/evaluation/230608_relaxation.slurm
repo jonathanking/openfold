@@ -22,7 +22,7 @@ source scripts/activate_conda_env.sh
 ############################
 
 # Select the nth line from a command file, where n is the array task ID
-cmd=$(sed -n ${SLURM_ARRAY_TASK_ID}p slurm/evaluation/230608_relaxation_cmds.txt)
+cmd=$(sed -n ${SLURM_ARRAY_TASK_ID}p slurm/evaluation/230731_relax_cmds.txt)
 
 # Execute the command
 eval $cmd

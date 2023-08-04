@@ -1,5 +1,6 @@
-""""The script takes a directory as input, which contains many subdirectories, each of which contains an evaluated run.
-It produces on stdout a list of python commands to run the relaxation analysis on each of the subdirectories.
+""""The script takes a directory as input, which contains many subdirectories,
+each of which contains an evaluated run. It produces on stdout a list of python commands 
+to run the relaxation analysis on each of the subdirectories.
 
 Example:
  python make_relaxation_cmds.py /net/pulsar/home/koes/jok120/openfold/out/evaluation/230629 > relaxation_cmds.sh

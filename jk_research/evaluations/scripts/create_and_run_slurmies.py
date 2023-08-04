@@ -21,14 +21,38 @@ def get_checkpoint_path(row):
         files = [f.split("-") for f in files]  # look at epoch and step
         files = [(int(f[0]), int(f[1].split(".")[0])) for f in files]
         files = sorted(files, key=lambda x: (x[0], x[1]))  # find the highest epoch/step
-        last_file = files[-1]
+        try:
+            last_file = files[-1]
+        except IndexError:
+            print("No checkpoint files found. Check the experiment directory.")
+            print(row["exp_dir"])
+            print(row["exp_name"])
+            print(row)
+            print("Exiting...")
+            exit()
         return f"{row['exp_dir']}/checkpoints/{last_file[0]}-{last_file[1]}.ckpt"
     # find the filenme that contains bestopenmm.ckpt
     elif row["exp_suffix"] == "eval_sOMM":
-        files = os.listdir(f"{row['exp_dir']}/checkpoints")
+        try:
+            files = os.listdir(f"{row['exp_dir']}/checkpoints")
+        except FileNotFoundError:
+            print("No checkpoint files found. Check the experiment directory.")
+            print(row["exp_dir"])
+            print(row["exp_name"])
+            print(row)
+            print("Exiting...")
+            exit()
         files = [f for f in files if f.endswith(".ckpt")]
         files = [f for f in files if "bestopenmm" in f]
-        return f"{row['exp_dir']}/checkpoints/{files[0]}"
+        try:
+            return f"{row['exp_dir']}/checkpoints/{files[0]}"
+        except IndexError:
+            print("No checkpoint files found. Check the experiment directory.")
+            print(row["exp_dir"])
+            print(row["exp_name"])
+            print(row)
+            print("Exiting...")
+            exit()
     else:
         step = row["exp_suffix"].split("_")[1][1:]
         #  Find the checkpoint with the closest step number
