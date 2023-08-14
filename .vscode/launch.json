@@ -5,6 +5,32 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "atsolo 230806",
+            "type": "python",
+            "request": "launch",
+            "program": "jk_research/angletransformer/train.py",
+            "console": "integratedTerminal",
+
+            "args": [ // (train_data_dir, train_alignment_dir, template_mmcif_dir, outdir)
+            "--train_data=/net/pulsar/home/koes/jok120/openfold/out/experiments/angletransformer-make-caches-50-TrainSample/*_train.pkl",
+            "--val_data=/net/pulsar/home/koes/jok120/openfold/out/experiments/angletransformer-make-caches-50-TrainSample/*_val.pkl",
+            "--experiment_name=ATdebug00",
+            "--output_dir=out/experiments/atsolo/",
+            "--batch_size=1",
+            "--num_workers=1",
+            "--wandb_notes='Debugging run for AngleTransformer.'",
+            "--wandb_tags=debug",
+            ],
+            // "justMyCode": true,
+            "justMyCode": true,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                // "CUDA_VISIBLE_DEVICES": "2",
+                "WANDB_MODE": "online",
+                "CUDA_HOME": "/opt/cuda-11.5",
+            }
+        },
+        {
             "name": "finetune OF 230731",
             "type": "python",
             "request": "launch",

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=C-VTMin
+#SBATCH --job-name=C-TstTstM
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --time=28-00:00:00
@@ -14,7 +14,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-make-caches-40-ValTrainmin"
+EXPERIMENT_ID="angletransformer-make-caches-50-TestTestMin"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Starts training from 'finetuning_5.pt'. Resume previous job."
 echo "This will be called ${EXPERIMENT_ID}."
@@ -51,15 +51,15 @@ VALIDATION_ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
 # VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 # VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-# TRAIN_STRUCTURES_DIR=data/test/cameo/20230103/minimized/data_dir
-# ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
+TRAIN_STRUCTURES_DIR=data/test/cameo/20230103/minimized/data_dir
+ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
 
 
 # TRAIN_STRUCTURES_DIR=data/train_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 # TRAIN_STRUCTURES_DIR=data/test/cameo/20230103/minimized/data_dir
 # ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
-TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530/
-ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  
+# TRAIN_STRUCTURES_DIR=data/train_structs/scnmin_structs0530/
+# ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  
 # ALIGNMENTS_DIR=data/alignments/roda_flattened/alignments
 # ALIGNMENTS_DIR=data/alignments/roda_flattened_65k/alignments
 # ALIGNMENTS_DIR=data/alignments/roda_flattened_65kpt2/alignments

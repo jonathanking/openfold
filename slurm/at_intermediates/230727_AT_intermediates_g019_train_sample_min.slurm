@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=C-VTMin
+#SBATCH --job-name=C-trSampleMin
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --time=28-00:00:00
@@ -14,7 +14,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-make-caches-40-ValTrainmin"
+EXPERIMENT_ID="angletransformer-make-caches-50-TrainSampleMin"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "Starts training from 'finetuning_5.pt'. Resume previous job."
 echo "This will be called ${EXPERIMENT_ID}."
@@ -45,8 +45,8 @@ mkdir -p ${OUTDIR}
 # The structure directory and caches can contain more structures than the aln dir.
 # The train_structures_dir here contains only the scnmin structs as of 230530 (30k).
 
-VALIDATION_STRUCTURES_DIR=data/test/cameo/20230103/minimized/data_dir
-VALIDATION_ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
+# VALIDATION_STRUCTURES_DIR=data/test/cameo/20230103/minimized/data_dir
+# VALIDATION_ALIGNMENTS_DIR=data/test/cameo/20230103/minimized/alignments
 
 # VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 # VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
@@ -66,8 +66,8 @@ ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/
 TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
 TRAIN_CACHE=data/caches/chain_data_cache_rodasnapshot_clustered.json
 TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
-# VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
-# VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
+VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
+VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 # TRAIN_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
 # ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
 
@@ -138,7 +138,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --test_data_dir=data/test/cameo/20230103/data_dir \
     --test_alignment_dir=data/test/cameo/20230103/alignments \
     --trainer_mode=save_angle_transformer_intermediates\
-    --disable_backwards=True
+    --disable_backwards=True \
+    --limit_train_batches=500
 
 
 sleep 120    
