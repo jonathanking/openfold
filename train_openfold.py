@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import argparse
+import gc
 import logging
 import os
 import pickle
@@ -199,62 +200,67 @@ class OpenFoldWrapper(pl.LightningModule):
             f.write("\n")
 
     def training_step(self, batch, batch_idx):
-        self.loss.mode = 'train'
-        if not self.automatic_optimization:
-            opt = self.optimizers()
-            opt.zero_grad()
+        try:
+            self.loss.mode = 'train'
+            if not self.automatic_optimization:
+                opt = self.optimizers()
+                opt.zero_grad()
 
-        if batch['all_atom_positions'].sum() == 0:
-            # TODO-JK: What happened here?
-            print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
-            return torch.tensor(0., requires_grad=True, device=self.device)
+            if batch['all_atom_positions'].sum() == 0:
+                # TODO-JK: What happened here?
+                print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
+                return torch.tensor(0., requires_grad=True, device=self.device)
 
-        if(self.ema.device != batch["aatype"].device):
-            self.ema.to(batch["aatype"].device)
+            if(self.ema.device != batch["aatype"].device):
+                self.ema.to(batch["aatype"].device)
 
-        # Run the model
-        if not self.config.model.disable_backwards:
-            outputs = self(batch)
-        else:
-            with torch.no_grad():
+            # Run the model, catching CUDA OOM RuntimeError
+            if not self.config.model.disable_backwards:
                 outputs = self(batch)
+            else:
+                with torch.no_grad():
+                    outputs = self(batch)
 
-        # Remove the recycling dimension
-        batch = tensor_tree_map(lambda t: t[..., -1], batch)
+            # Remove the recycling dimension
+            batch = tensor_tree_map(lambda t: t[..., -1], batch)
 
-        if outputs['final_atom_positions'].sum() == 0:
-            # TODO-JK: What happened here?
-            print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
-            return torch.tensor(0., requires_grad=True, device=self.device)
+            if outputs['final_atom_positions'].sum() == 0:
+                # TODO-JK: What happened here?
+                print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
+                return torch.tensor(0., requires_grad=True, device=self.device)
 
-        # Compute loss
-        if not self.config.model.disable_backwards:
-            loss, loss_breakdown = self.loss(
-                outputs, batch, _return_breakdown=True
-            )
-        else:
-            with torch.no_grad():
+            # Compute loss
+            if not self.config.model.disable_backwards:
                 loss, loss_breakdown = self.loss(
                     outputs, batch, _return_breakdown=True
                 )
+            else:
+                with torch.no_grad():
+                    loss, loss_breakdown = self.loss(
+                        outputs, batch, _return_breakdown=True
+                    )
 
-        # Log it
-        self._log(loss_breakdown, batch, outputs)
+            # Log it
+            self._log(loss_breakdown, batch, outputs)
 
-        # Backprop
-        if not self.config.model.disable_backwards and not self.automatic_optimization:
-            self.manual_backward(loss)
-            if self.config.model.grad_clip_val != 0:
-                torch.nn.utils.clip_grad_value_(
-                    self.model.parameters(), self.config.model.grad_clip_val
-                )
-            opt.step()
-            self.lr_schedulers().step()
-        
-        if self.openmm_scheduler is not None:
-            self.openmm_scheduler.step(self.global_step)
+            # Backprop
+            if not self.config.model.disable_backwards and not self.automatic_optimization:
+                self.manual_backward(loss)
+                if self.config.model.grad_clip_val != 0:
+                    torch.nn.utils.clip_grad_value_(
+                        self.model.parameters(), self.config.model.grad_clip_val
+                    )
+                opt.step()
+                self.lr_schedulers().step()
 
-        return loss
+            if self.openmm_scheduler is not None:
+                self.openmm_scheduler.step(self.global_step)
+
+            return loss
+        except RuntimeError:
+            gc.collect()
+            torch.torch.cuda.empty_cache()
+            return None
 
     def on_before_zero_grad(self, *args, **kwargs):
         self.ema.update(self.model)
@@ -877,6 +883,158 @@ def main(args):
             print("Saving val results to", args.output_dir)
             with open(os.path.join(args.output_dir, "test_results.pkl"), "wb") as f:
                 pickle.dump(results, f)
+    elif args.trainer_mode == "validate-test":
+        # TEST SET
+        print("Validating on test set.")
+        model_module._test = True
+        model_module.csv_path = os.path.join(args.output_dir, "test_results.csv")
+        args.val_data_dir = args.test_data_dir
+        args.val_alignment_dir = args.test_alignment_dir
+        data_module = OpenFoldDataModule(
+            config=config.data,
+            batch_seed=args.seed,
+            **vars(args)
+        )
+        data_module.prepare_data()
+        data_module.setup()
+        results = trainer.validate(
+            model_module,
+            dataloaders=data_module.val_dataloader(),
+            ckpt_path=ckpt_path,
+            verbose=True,
+        )
+        # Save results to file
+        if wdb_logger is not None:
+            print("Saving val results to", args.output_dir)
+            with open(os.path.join(args.output_dir, "test_results.pkl"), "wb") as f:
+                pickle.dump(results, f)
+    elif args.trainer_mode == "save_angle_transformer_intermediates":
+
+        val_cache_data = {"current_datapt_number": 0}
+
+        def sm_hook(module, _input, _output):
+            n = val_cache_data["current_datapt_number"]
+            # evoformer_output_dict, aatype = _input[0], _input[1].detach().cpu()
+            sm_outputs = _output
+            s_initial = sm_outputs["s_initial"].detach().cpu()
+            s = sm_outputs["states"].detach().cpu()
+
+            if n in val_cache_data:
+                val_cache_data[n]["s"].append(s)
+                val_cache_data[n]["s_initial"].append(s_initial)
+            else:
+                val_cache_data[n] = {
+                    "s": [s],
+                    "s_initial": [s_initial]
+                }
+        _val_sm_hook = model_module.model.structure_module.register_forward_hook(sm_hook)
+
+        def val_loss_hook(module, _input, _output):
+            n = val_cache_data["current_datapt_number"]
+            out, batch = _input
+            d = {
+                    "aatype": batch["aatype"].detach().cpu(),
+                    "seq_mask": batch["seq_mask"].detach().cpu(),
+                    "chi_mask": batch["chi_mask"].detach().cpu(),
+                    "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
+                    "name": batch["name"][0],
+                }
+            val_cache_data[n].update(d)
+            val_cache_data["current_datapt_number"] = n + 1
+            print("datapt_number", val_cache_data["current_datapt_number"])
+            
+            # Save to individual file
+            tiny_file = os.path.join(args.output_dir, "indiv_val", f"{torch.distributed.get_rank()}_{n:06}.pkl")
+            # Make sure the directory exists
+            os.makedirs(os.path.dirname(tiny_file), exist_ok=True)
+            with open(tiny_file, "wb") as f:
+                pickle.dump(val_cache_data[n], f)
+            print("Saved angle transformer intermediates to", tiny_file)
+
+        _vlhook = model_module.loss.register_forward_hook(val_loss_hook)
+
+        # VALIDATION SET
+        print("Validating on validation set.")
+        model_module.csv_path = os.path.join(args.output_dir, "val_results.csv")
+        results = trainer.fit(
+            model_module,
+            train_dataloaders=data_module.val_dataloader(),
+            ckpt_path=ckpt_path,
+        )
+
+        _val_sm_hook.remove()
+        _vlhook.remove()
+
+        CACHE_OUTPUT_FILE = os.path.join(args.output_dir, "angle_transformer_intermediates.pkl")
+
+        # with open(CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_val.pkl"), "wb") as f:
+        #     pickle.dump(val_cache_data, f)
+        #     print("Saved angle transformer intermediates to", CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_val.pkl"))
+        
+        del val_cache_data
+        torch.cuda.empty_cache()
+
+        # Training Set
+
+        train_cache_data = {"current_datapt_number": 0}
+
+        def sm_hook(module, _input, _output):
+            n = train_cache_data["current_datapt_number"]
+            # evoformer_output_dict, aatype = _input[0], _input[1].detach().cpu()
+            sm_outputs = _output
+            s_initial = sm_outputs["s_initial"].detach().cpu()
+            s = sm_outputs["states"].detach().cpu()
+
+            if n in train_cache_data:
+                train_cache_data[n]["s"].append(s)
+                train_cache_data[n]["s_initial"].append(s_initial)
+            else:
+                train_cache_data[n] = {
+                    "s": [s],
+                    "s_initial": [s_initial]
+                }
+        _train_sm_hook = model_module.model.structure_module.register_forward_hook(sm_hook)
+
+        def train_loss_hook(module, _input, _output):
+            n = train_cache_data["current_datapt_number"]
+            out, batch = _input
+            d = {
+                    "aatype": batch["aatype"].detach().cpu(),
+                    "seq_mask": batch["seq_mask"].detach().cpu(),
+                    "chi_mask": batch["chi_mask"].detach().cpu(),
+                    "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
+                    "name": batch["name"][0],
+                }
+            train_cache_data[n].update(d)
+            train_cache_data["current_datapt_number"] = n + 1
+            print("datapt_number", train_cache_data["current_datapt_number"])
+            # Save to individual file
+            tiny_file = os.path.join(args.output_dir, "indiv_train", f"{torch.distributed.get_rank()}_{n:06}.pkl")
+            os.makedirs(os.path.dirname(tiny_file), exist_ok=True)
+            with open(tiny_file, "wb") as f:
+                pickle.dump(train_cache_data[n], f)
+            print("Saved angle transformer intermediates to", tiny_file)
+        _train_loss_hook = model_module.loss.register_forward_hook(train_loss_hook)
+
+        print("Validating on train set.")
+        model_module.csv_path = os.path.join(args.output_dir, "train_results.csv")
+        results = trainer.fit(
+            model_module,
+            train_dataloaders=data_module.train_dataloader(),
+            ckpt_path=ckpt_path,
+        )
+
+        _train_sm_hook.remove()
+        _train_loss_hook.remove()
+
+        CACHE_OUTPUT_FILE = os.path.join(args.output_dir, "angle_transformer_intermediates.pkl")
+
+        # with open(CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_train.pkl"), "wb") as f:
+        #     pickle.dump(train_cache_data, f)
+        #     print("Saved angle transformer intermediates to", CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_train.pkl"))
+
+    
+
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
 
@@ -1313,7 +1471,12 @@ if __name__ == "__main__":
                         default=False,
                         help="If true, set all loss weights to 0 except fape, supervised "
                         "chi, and violation.")
-    
+    parser.add_argument("--save_angle_transformer_intermediates_path",
+                        type=str,
+                        default="",
+                        help="Path to save angle transformer intermediates. If empty, "
+                        "intermediates will not be saved.")
+
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass
