@@ -93,4 +93,4 @@ class AngleTransformer(nn.Module):
             ))
         s = s / norm_denom
 
-        return unnormalized_s, s
+        return unnormalized_s, s  # Batch x Length x 7 x 2
