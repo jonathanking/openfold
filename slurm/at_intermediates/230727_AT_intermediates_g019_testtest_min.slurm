@@ -2,7 +2,7 @@
 #SBATCH --job-name=C-TstTstM
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=28-00:00:00
+#SBATCH --time=0-03:00:00
 #SBATCH --partition=dept_gpu
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL

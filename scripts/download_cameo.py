@@ -5,6 +5,7 @@ import json
 import os
 import re
 import requests
+from tqdm import tqdm
 
 from openfold.data import mmcif_parsing
 
@@ -37,11 +38,16 @@ def main(args):
     os.makedirs(fasta_dir_path, exist_ok=True)
 
     url = generate_url(args.period, args.end_date)
+    print("Starting chain_data download...", end=" ")
     raw_data = requests.get(url).text
     parsed_data = json.loads(raw_data)
 
+    
     chain_data = parsed_data["aaData"]
-    for chain in chain_data:
+    print("...done.", end= "   ")
+    print("Chain data len =", len(chain_data))
+    # exit(0)
+    for chain in tqdm(chain_data, total=len(chain_data)):
         pdb_id = chain["pdbid"]
         chain_id = chain["pdbid_chain"]
 
