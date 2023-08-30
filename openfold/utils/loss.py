@@ -327,46 +327,51 @@ def supervised_chi_loss(
             [*] loss tensor
     """
     pred_angles = angles_sin_cos[..., 3:, :]  # [8, 1, 256, 4, 2]
-    residue_type_one_hot = torch.nn.functional.one_hot(
+    residue_type_one_hot = torch.nn.functional.one_hot(  # Convert aa indices to one-hots; [1, 256, 21]
         aatype,
         residue_constants.restype_num + 1,
     )
     chi_pi_periodic = torch.einsum(
-        "...ij,jk->ik",
-        residue_type_one_hot.type(angles_sin_cos.dtype),
-        angles_sin_cos.new_tensor(residue_constants.chi_pi_periodic),
+        "...ij,jk->ik",  # (1, 256, 21), (21, 4) -> (1, 256, 4)
+        residue_type_one_hot.type(angles_sin_cos.dtype),  # long -> float conversion
+        angles_sin_cos.new_tensor(residue_constants.chi_pi_periodic),  # identifies which chi angles are periodic;
     )
 
     true_chi = chi_angles_sin_cos[None]  # [1, 1, 256, 4, 2]
 
-    shifted_mask = (1 - 2 * chi_pi_periodic).unsqueeze(-1)
-    true_chi_shifted = shifted_mask * true_chi
-    sq_chi_error = torch.sum((true_chi - pred_angles) ** 2, dim=-1)
+    shifted_mask = (1 - 2 * chi_pi_periodic).unsqueeze(-1)  # [1, 256, 4, 1]; -1 if periodic, 1 if not
+    true_chi_shifted = shifted_mask * true_chi  # an alternative matrix where periodic angles are negated; (1, 1, 256, 4, 2)
+    sq_chi_error = torch.sum((true_chi - pred_angles) ** 2, dim=-1)   # [1, 1, 256, 4]
     sq_chi_error_shifted = torch.sum(
-        (true_chi_shifted - pred_angles) ** 2, dim=-1
+        (true_chi_shifted - pred_angles) ** 2, dim=-1                 # [1, 1, 256, 4]
     )
-    sq_chi_error = torch.minimum(sq_chi_error, sq_chi_error_shifted)
+    sq_chi_error = torch.minimum(sq_chi_error, sq_chi_error_shifted)  # [1, 1, 256, 4]
     
-    # The ol' switcheroo
+    # The ol' switcheroo; Essentially puts the batch dimension first, rather than the SM dim
     sq_chi_error = sq_chi_error.permute(
-        *range(len(sq_chi_error.shape))[1:-2], 0, -2, -1
+        *range(len(sq_chi_error.shape))[1:-2], 0, -2, -1  # Must be some number of dims followed by SM dim, and the last two (N, num_angles)
+        # [1, 256, 4] -> [256, 4, 1]
+        # *range(4) = 0, 1, 2, 3
+        # *range(4)[1:-2] = 1
+        # *range(4)[1:-2], 0, -2, -1 = 1, 0, -2, -1
+        # (1, 1, 256, 4 )
     )
 
     sq_chi_loss = masked_mean(
-        chi_mask[..., None, :, :], sq_chi_error, dim=(-1, -2, -3)
+        chi_mask[..., None, :, :], sq_chi_error, dim=(-1, -2, -3)   # [1, 1, 256, 4] -> [1]
     )
 
     loss = chi_weight * sq_chi_loss
 
     angle_norm = torch.sqrt(
-        torch.sum(unnormalized_angles_sin_cos ** 2, dim=-1) + eps
+        torch.sum(unnormalized_angles_sin_cos ** 2, dim=-1) + eps  # [8, 1, 256, 4, 2] -> [8, 1, 256, 4]
     )
-    norm_error = torch.abs(angle_norm - 1.0)
+    norm_error = torch.abs(angle_norm - 1.0)  # How close are we to 1? [8, 1, 256, 4]
     norm_error = norm_error.permute(
-        *range(len(norm_error.shape))[1:-2], 0, -2, -1
+        *range(len(norm_error.shape))[1:-2], 0, -2, -1  # Swap SM dim and batch dim again, [1, 8, 256, 4]
     )
     angle_norm_loss = masked_mean(
-        seq_mask[..., None, :, None], norm_error, dim=(-1, -2, -3)
+        seq_mask[..., None, :, None], norm_error, dim=(-1, -2, -3)  # [1, 8, 256, 4] -> [1]
     )
 
     loss = loss + angle_norm_weight * angle_norm_loss
