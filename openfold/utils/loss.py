@@ -36,7 +36,7 @@ from openfold.utils.tensor_utils import (
 
 from sidechainnet.research.openfold.openfold_loss import openmm_loss
 from sidechainnet.structure import inverse_trig_transform
-from sidechainnet.examples.losses import angle_mae
+from sidechainnet.examples.losses import angle_mae, angle_abs_error
 import wandb
 
 
@@ -316,9 +316,9 @@ def supervised_chi_loss(
             seq_mask:
                 [*, N] sequence mask
             chi_mask:
-                [*, N, 7] angle mask
+                [*, N, 7] angle mask; actually [*, N, 4]
             chi_angles_sin_cos:
-                [*, N, 7, 2] ground truth angles
+                [*, N, 7, 2] ground truth angles; actually [*, N, 4, 2]
             chi_weight:
                 Weight for the angle component of the loss
             angle_norm_weight:
@@ -379,19 +379,30 @@ def supervised_chi_loss(
     # Average over the batch dimension
     loss = torch.mean(loss)
 
-    # Compute the MAE so we know exactly how good the angle prediction is in Radians
-    # print(pred_angles.shape)
-    # pred = torch.transpose(pred_angles.clone(), 0, 1)  # [1, 8, 256, 4, 2]
-    # pred = pred[:, -1, :, :, :]  # [1, 1, 256, 4, 2]
-    # pred = pred.reshape(pred.shape[0], pred.shape[-3], pred.shape[-2], pred.shape[-1])  # [1, 256, 4, 2]
-    # true_chi2 = chi_angles_sin_cos.clone()  # [1, 256, 4, 2]
-    # true_chi2 = inverse_trig_transform(true_chi2, 4)  # [1, 256, 4]
-    # pred = inverse_trig_transform(pred, 4)  # [1, 256, 4]
-    # true_chi2 = true_chi2.masked_fill_(~chi_mask.bool(), torch.nan)
-    # pred = pred.masked_fill_(~chi_mask.bool(), torch.nan)
-    # mae = angle_mae(true_chi2, pred)
+    # Compute the MAE so we know exactly how good the angle prediction is in degrees
+    with torch.no_grad():
+        print(pred_angles.shape)
+        pred = pred_angles.unsqueeze(0).clone()  # [1, 8, 256, 4, 2]
+        pred = pred[:, -1, :, :, :]  # [1, 1, 256, 4, 2]
+        pred = pred.reshape(pred.shape[0], pred.shape[-3], pred.shape[-2], pred.shape[-1])  # [1, 256, 4, 2]
+        true_chi2 = chi_angles_sin_cos.unsqueeze(0).clone()  # [1, 256, 4, 2]
+        true_chi2 = inverse_trig_transform(true_chi2, n_angles=4, cos_first=False)  # [1, 256, 4]
+        pred = inverse_trig_transform(pred, n_angles=4, cos_first=False)  # [1, 256, 4]
+        true_chi2 = true_chi2.masked_fill_(~chi_mask.bool(), torch.nan)
+        pred = pred.masked_fill_(~chi_mask.bool(), torch.nan)
+        abs_error = torch.rad2deg(angle_abs_error(true_chi2, pred))
+        mae = torch.nanmean(abs_error)
+        chi_abs_error = torch.nanmean(abs_error, dim=(0,1))  
 
-    loss_dict = {"loss": loss, "sq_chi_loss": sq_chi_loss, "angle_norm_loss": angle_norm_loss, "angle_mae": 0}
+    loss_dict = {"loss": loss, "sq_chi_loss": sq_chi_loss, "angle_norm_loss": angle_norm_loss, "angle_mae": mae}
+
+    loss_dict.update(
+        {"x1_mae": chi_abs_error[0],
+         "x2_mae": chi_abs_error[1],
+         "x3_mae": chi_abs_error[2],
+         "x4_mae": chi_abs_error[3]
+         }
+    )
 
     return loss_dict
 
