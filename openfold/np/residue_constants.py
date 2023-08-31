@@ -962,6 +962,7 @@ unk_restype = "UNK"
 
 resnames = [restype_1to3[r] for r in restypes] + [unk_restype]
 resname_to_idx = {resname: i for i, resname in enumerate(resnames)}
+idx_to_resname = {i: resname for i, resname in enumerate(resnames)}
 
 
 # The mapping here uses hhblits convention, so that B is mapped to D, J and O
