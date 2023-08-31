@@ -381,7 +381,6 @@ def supervised_chi_loss(
 
     # Compute the MAE so we know exactly how good the angle prediction is in degrees
     with torch.no_grad():
-        print(pred_angles.shape)
         pred = pred_angles.unsqueeze(0).clone()  # [1, 8, 256, 4, 2]
         pred = pred[:, -1, :, :, :]  # [1, 1, 256, 4, 2]
         pred = pred.reshape(pred.shape[0], pred.shape[-3], pred.shape[-2], pred.shape[-1])  # [1, 256, 4, 2]
@@ -394,15 +393,22 @@ def supervised_chi_loss(
         mae = torch.nanmean(abs_error)
         chi_abs_error = torch.nanmean(abs_error, dim=(0,1))  
 
-    loss_dict = {"loss": loss, "sq_chi_loss": sq_chi_loss, "angle_norm_loss": angle_norm_loss, "angle_mae": mae}
+    loss_dict = {"loss": loss, "sq_chi_loss": sq_chi_loss.detach(), "angle_norm_loss": angle_norm_loss.detach(), "angle_mae": mae.detach()}
 
     loss_dict.update(
-        {"x1_mae": chi_abs_error[0],
-         "x2_mae": chi_abs_error[1],
-         "x3_mae": chi_abs_error[2],
-         "x4_mae": chi_abs_error[3]
+        {"x1_mae": chi_abs_error[0].detach(),
+         "x2_mae": chi_abs_error[1].detach(),
+         "x3_mae": chi_abs_error[2].detach(),
+         "x4_mae": chi_abs_error[3].detach()
          }
     )
+
+    # Compute per-residue identity MAE
+    with torch.no_grad():
+        for i in range(21):
+            res_speicific_abs_error = abs_error[aatype == i]
+            res_specific_mae = torch.nanmean(res_speicific_abs_error)
+            loss_dict.update({f"{residue_constants.idx_to_resname[i]}_mae": res_specific_mae.detach()})
 
     return loss_dict
 
