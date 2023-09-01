@@ -41,7 +41,8 @@ from openfold.utils.tensor_utils import (
     flatten_final_dims,
 )
 
-from openfold.model.jk_sidechain_model import AngleTransformer
+# from openfold.model.jk_sidechain_model import AngleTransformer
+from angletransformer.model import AngleTransformer
 
 attn_core_inplace_cuda = importlib.import_module("attn_core_inplace_cuda")
 
@@ -629,6 +630,7 @@ class StructureModule(nn.Module):
                 dropout=kwargs['angle_transformer_dropout'],
                 d_ff=kwargs['angle_transformer_dff'],
                 no_heads=kwargs['angle_transformer_heads'],
+                activation=kwargs['angle_transformer_activation']
             )
         else:
             self.angle_resnet = AngleResnet(

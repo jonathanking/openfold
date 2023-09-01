@@ -18,6 +18,7 @@ from pytorch_lightning.plugins.training_type import DeepSpeedPlugin, DDPPlugin
 from pytorch_lightning.plugins.environments import SLURMEnvironment
 import torch
 import torch.multiprocessing
+
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 from deepspeed.ops.adam import DeepSpeedCPUAdam
@@ -32,8 +33,7 @@ from openfold.model.torchscript import script_preset_
 from openfold.np import residue_constants
 from openfold.utils.argparse import remove_arguments
 from openfold.utils.callbacks import (
-    EarlyStoppingVerbose,
-)
+    EarlyStoppingVerbose, )
 from openfold.utils.exponential_moving_average import ExponentialMovingAverage
 from openfold.utils.import_weights import import_jax_weights_
 from openfold.utils.loss import AlphaFoldLoss, lddt_ca
@@ -48,12 +48,9 @@ from openfold.utils.validation_metrics import (
     gdt_ha,
 )
 from openfold.utils.import_weights import (
-    import_jax_weights_,
-)
-from scripts.zero_to_fp32 import (
-    get_fp32_state_dict_from_zero_checkpoint,
-    get_global_step_from_zero_checkpoint
-)
+    import_jax_weights_, )
+from scripts.zero_to_fp32 import (get_fp32_state_dict_from_zero_checkpoint,
+                                  get_global_step_from_zero_checkpoint)
 
 from openfold.utils.logger import PerformanceLoggingCallback
 
@@ -67,6 +64,7 @@ from tqdm.utils import _unicode, disp_len
 _TQDM_STATUS_EVERY_N = 2
 
 if "SLURM_JOB_ID" in os.environ:
+
     def status_printer(self, file):
         """
         Manage the printing and in-place updating of a line of characters.
@@ -94,6 +92,7 @@ if "SLURM_JOB_ID" in os.environ:
                 last_len[0] = len_s
 
         return print_status
+
     tqdm.status_printer = status_printer
     logging.info("Overwriting tqdm status printer for SLURM output.")
 
@@ -108,17 +107,15 @@ class OpenFoldWrapper(pl.LightningModule):
             self.openmm_scheduler = None
         self.model = AlphaFold(config)
         self.loss = AlphaFoldLoss(config.loss, self.openmm_scheduler)
-        self.ema = ExponentialMovingAverage(
-            model=self.model, decay=config.ema.decay
-        )
-        
+        self.ema = ExponentialMovingAverage(model=self.model, decay=config.ema.decay)
+
         self.cached_weights = None
         self.last_lr_step = -1
 
         self.automatic_optimization = not self.config.model.disable_backwards
         self.csv_path = csv_path
         self._test = False
-    
+
     def reinit_ema(self):
         """Reinitialize EMA model weights using the current model weights.
         
@@ -128,9 +125,7 @@ class OpenFoldWrapper(pl.LightningModule):
         random/meaningless ema weights. This is especially relevant when validation_step
         gets called before the start of training, but the model has weights loaded.
         """
-        self.ema = ExponentialMovingAverage(
-            model=self.model, decay=self.config.ema.decay
-        )
+        self.ema = ExponentialMovingAverage(model=self.model, decay=self.config.ema.decay)
 
     def forward(self, batch):
         return self.model(batch)
@@ -140,36 +135,46 @@ class OpenFoldWrapper(pl.LightningModule):
             phase = "test"
         elif train:
             phase = "train"
-            self.log("train/step_monitor", self.global_step, on_step=True, on_epoch=False, logger=True)
+            self.log("train/step_monitor",
+                     self.global_step,
+                     on_step=True,
+                     on_epoch=False,
+                     logger=True)
         else:
             phase = "val"
         for loss_name, indiv_loss in loss_breakdown.items():
+            if torch.isnan(indiv_loss) and loss_name != "loss":
+                continue
             self.log(
-                f"{phase}/{loss_name}", 
-                indiv_loss, 
-                on_step=train, on_epoch=(not train), logger=True,
+                f"{phase}/{loss_name}",
+                indiv_loss,
+                on_step=train,
+                on_epoch=(not train),
+                logger=True,
             )
 
-            if(train):
+            if (train):
                 self.log(
                     f"{phase}/{loss_name}_epoch",
                     indiv_loss,
-                    on_step=False, on_epoch=True, logger=True,
+                    on_step=False,
+                    on_epoch=True,
+                    logger=True,
                 )
 
         with torch.no_grad():
             other_metrics = self._compute_validation_metrics(
-                batch, 
+                batch,
                 outputs,
                 superimposition_metrics=True  # MOD-JK: Changed to compute gdtts on train
             )
 
         for k, v in other_metrics.items():
             self.log(f"{phase}/{k}", v, on_step=train, on_epoch=True, logger=True)
-        
+
         if self.config.logging.log_to_csv:
             self._log_to_csv(batch, loss_breakdown, other_metrics, train=train)
-    
+
     def _log_to_csv(self, batch, loss_breakdown, other_metrics, train=True):
         """Log to a CSV file for later analysis.
         Each row should reflect metric for a single protein (there may be multiple
@@ -189,7 +194,8 @@ class OpenFoldWrapper(pl.LightningModule):
 
         protein_name = batch["name"][0] if len(batch["name"]) == 1 else "batch"
 
-        fmt = lambda tensor_to_str: str(tensor_to_str.item()) if isinstance(tensor_to_str, torch.Tensor) else str(tensor_to_str)
+        fmt = lambda tensor_to_str: str(tensor_to_str.item()) if isinstance(
+            tensor_to_str, torch.Tensor) else str(tensor_to_str)
 
         with open(self.csv_path, "a") as f:
             f.write(f"{protein_name},")
@@ -211,7 +217,7 @@ class OpenFoldWrapper(pl.LightningModule):
                 print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
                 return torch.tensor(0., requires_grad=True, device=self.device)
 
-            if(self.ema.device != batch["aatype"].device):
+            if (self.ema.device != batch["aatype"].device):
                 self.ema.to(batch["aatype"].device)
 
             # Run the model, catching CUDA OOM RuntimeError
@@ -231,14 +237,12 @@ class OpenFoldWrapper(pl.LightningModule):
 
             # Compute loss
             if not self.config.model.disable_backwards:
-                loss, loss_breakdown = self.loss(
-                    outputs, batch, _return_breakdown=True
-                )
+                loss, loss_breakdown = self.loss(outputs, batch, _return_breakdown=True)
             else:
                 with torch.no_grad():
-                    loss, loss_breakdown = self.loss(
-                        outputs, batch, _return_breakdown=True
-                    )
+                    loss, loss_breakdown = self.loss(outputs,
+                                                     batch,
+                                                     _return_breakdown=True)
 
             # Log it
             self._log(loss_breakdown, batch, outputs)
@@ -247,9 +251,8 @@ class OpenFoldWrapper(pl.LightningModule):
             if not self.config.model.disable_backwards and not self.automatic_optimization:
                 self.manual_backward(loss)
                 if self.config.model.grad_clip_val != 0:
-                    torch.nn.utils.clip_grad_value_(
-                        self.model.parameters(), self.config.model.grad_clip_val
-                    )
+                    torch.nn.utils.clip_grad_value_(self.model.parameters(),
+                                                    self.config.model.grad_clip_val)
                 opt.step()
                 self.lr_schedulers().step()
 
@@ -268,60 +271,58 @@ class OpenFoldWrapper(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         self.loss.mode = 'val' if not self._test else 'test'
         # At the start of validation, load the EMA weights
-        if(self.cached_weights is None):
+        if (self.cached_weights is None):
             # model.state_dict() contains references to model weights rather
-            # than copies. Therefore, we need to clone them before calling 
+            # than copies. Therefore, we need to clone them before calling
             # load_state_dict().
             clone_param = lambda t: t.detach().clone()
             self.cached_weights = tensor_tree_map(clone_param, self.model.state_dict())
             self.model.load_state_dict(self.ema.state_dict()["params"])
-       
+
         # Run the model
         outputs = self(batch)
         batch = tensor_tree_map(lambda t: t[..., -1], batch)
 
         # Compute loss and other metrics
         batch["use_clamped_fape"] = 0.
-        _, loss_breakdown = self.loss(
-            outputs, batch, _return_breakdown=True
-        )
+        _, loss_breakdown = self.loss(outputs, batch, _return_breakdown=True)
 
         self._log(loss_breakdown, batch, outputs, train=False)
         return loss_breakdown
-        
+
     def validation_epoch_end(self, _):
         # Restore the model weights to normal
         self.model.load_state_dict(self.cached_weights)
         self.cached_weights = None
-    
+
     def on_fit_start(self):
         self._fit_start_time = time.time()
 
     def on_fit_end(self):
         self._fit_end_time = time.time()
         wandb.run.summary["total_fit_time"] = self._fit_end_time - self._fit_start_time
-    
+
     def on_train_batch_start(self, batch, batch_idx):
         # Log the training_batch_time
         self._batch_start_time = time.time()
-    
+
     def on_train_batch_end(self, outputs, batch, batch_idx) -> None:
         # Compute and log the training_batch_time
         batch_end_time = time.time()
         batch_duration = batch_end_time - self._batch_start_time
-        self.log("train/batch_time", batch_duration, on_step=True, on_epoch=False, logger=True)
+        self.log("train/batch_time",
+                 batch_duration,
+                 on_step=True,
+                 on_epoch=False,
+                 logger=True)
 
-    def _compute_validation_metrics(self, 
-        batch, 
-        outputs, 
-        superimposition_metrics=False
-    ):
+    def _compute_validation_metrics(self, batch, outputs, superimposition_metrics=False):
         metrics = {}
-        
+
         gt_coords = batch["all_atom_positions"]
         pred_coords = outputs["final_atom_positions"]
         all_atom_mask = batch["all_atom_mask"]
-    
+
         # This is super janky for superimposition. Fix later
         gt_coords_masked = gt_coords * all_atom_mask[..., None]
         pred_coords_masked = pred_coords * all_atom_mask[..., None]
@@ -329,7 +330,7 @@ class OpenFoldWrapper(pl.LightningModule):
         gt_coords_masked_ca = gt_coords_masked[..., ca_pos, :]
         pred_coords_masked_ca = pred_coords_masked[..., ca_pos, :]
         all_atom_mask_ca = all_atom_mask[..., ca_pos]
-    
+
         lddt_ca_score = lddt_ca(
             pred_coords,
             gt_coords,
@@ -337,7 +338,7 @@ class OpenFoldWrapper(pl.LightningModule):
             eps=self.config.globals.eps,
             per_residue=False,
         )
-   
+
         metrics["lddt_ca"] = lddt_ca_score
 
         if batch["all_atom_positions"].shape[0] != 1:
@@ -348,7 +349,7 @@ class OpenFoldWrapper(pl.LightningModule):
             drmsd_ca_score = drmsd(
                 pred_coords_masked_ca,
                 gt_coords_masked_ca,
-                mask=all_atom_mask_ca, # still required here to compute n
+                mask=all_atom_mask_ca,  # still required here to compute n
             )
             metrics["drmsd_ca"] = drmsd_ca_score
 
@@ -361,9 +362,9 @@ class OpenFoldWrapper(pl.LightningModule):
                     all_atom_mask_ca,
                 )
                 gdt_ts_score = gdt_ts(superimposed_pred, gt_coords_masked_ca,
-                                    all_atom_mask_ca)
+                                      all_atom_mask_ca)
                 gdt_ha_score = gdt_ha(superimposed_pred, gt_coords_masked_ca,
-                                    all_atom_mask_ca)
+                                      all_atom_mask_ca)
                 metrics["rmsd_ca"] = alignment_rmsd
                 metrics["gdtts_ca"] = gdt_ts_score
                 metrics["gdtha_ca"] = gdt_ha_score
@@ -384,20 +385,21 @@ class OpenFoldWrapper(pl.LightningModule):
                     flat_pred_unpadded_np = flat_pred_unpadded.cpu().numpy()
 
                     # >>> All-atom RMSD
-                    flat_superimposed_pred_aa, rmsd_all = superimpose(flat_gt, flat_pred,
-                                                                    flat_all_atom_mask)
+                    flat_superimposed_pred_aa, rmsd_all = superimpose(
+                        flat_gt, flat_pred, flat_all_atom_mask)
                     metrics["rmsd_aa"] = rmsd_all
                     flat_superimposed_pred_aa_unpadded_np = flat_superimposed_pred_aa[
                         flat_all_atom_mask.bool()].cpu().numpy()
 
                     # >>> Global Metrics (GDC_all, TM score)
                     gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
-                                                flat_superimposed_pred_aa_unpadded_np,
-                                                skip_alignment=True,
-                                                as_percent=False)
-                    tmscore_aa = scn_losses.tm_score(flat_gt_unpadded_np,
-                                                    flat_superimposed_pred_aa_unpadded_np,
-                                                    skip_alignment=True)
+                                                   flat_superimposed_pred_aa_unpadded_np,
+                                                   skip_alignment=True,
+                                                   as_percent=False)
+                    tmscore_aa = scn_losses.tm_score(
+                        flat_gt_unpadded_np,
+                        flat_superimposed_pred_aa_unpadded_np,
+                        skip_alignment=True)
                     tmscore_ca = scn_losses.tm_score(
                         gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
                         superimposed_pred[all_atom_mask_ca.bool()].cpu().numpy(),
@@ -414,8 +416,8 @@ class OpenFoldWrapper(pl.LightningModule):
                         residue_shape=gt_coords.shape[-1],
                         cutoff=15)
                     lddtquasi_aa = scn_losses.quasi_lddt_all(flat_gt_unpadded,
-                                                            flat_pred_unpadded,
-                                                            cutoff=15)
+                                                             flat_pred_unpadded,
+                                                             cutoff=15)
 
                     metrics["gdcall_aa"] = gdcall_aa
                     metrics["tmscore_aa"] = tmscore_aa
@@ -430,11 +432,11 @@ class OpenFoldWrapper(pl.LightningModule):
                     if show_scn_metrics:
                         # 1. SCN only rmsd (does alignment)
                         alignment_rmsd_scn1 = scn_losses.rmsd(flat_gt_unpadded_np,
-                                                            flat_pred_unpadded_np)
+                                                              flat_pred_unpadded_np)
                         # 2. SCN assisted rmsd (uses openfold's alignment)
                         alignment_rmsd_scn2 = scn_losses.rmsd(
-                            flat_gt_unpadded_np,
-                            flat_superimposed_pred_aa[flat_all_atom_mask.bool()].cpu().numpy())
+                            flat_gt_unpadded_np, flat_superimposed_pred_aa[
+                                flat_all_atom_mask.bool()].cpu().numpy())
                         # 3. SCN only rmsd_ca (does alignment)
                         alignment_rmsd_scn1_ca = scn_losses.rmsd(
                             gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
@@ -456,44 +458,40 @@ class OpenFoldWrapper(pl.LightningModule):
                 pass
         return metrics
 
-    def configure_optimizers(self, 
+    def configure_optimizers(
+        self,
         learning_rate: float = 1e-3,
         eps: float = 1e-5,
     ) -> torch.optim.Adam:
 
         if isinstance(self.trainer.training_type_plugin, DeepSpeedPlugin):
             print("Initializing deepspeed optimizer.")
-            optimizer = DeepSpeedCPUAdam(
-                self.model.parameters(),
-                lr=learning_rate,
-                eps=eps
-            )
+            optimizer = DeepSpeedCPUAdam(self.model.parameters(),
+                                         lr=learning_rate,
+                                         eps=eps)
         else:
-            optimizer = torch.optim.Adam(
-                self.model.parameters(),
-                lr=learning_rate,
-                eps=eps
-            )
+            optimizer = torch.optim.Adam(self.model.parameters(),
+                                         lr=learning_rate,
+                                         eps=eps)
 
         if self.last_lr_step != -1:
             for group in optimizer.param_groups:
                 if 'initial_lr' not in group:
                     group['initial_lr'] = learning_rate
 
-        lr_scheduler = AlphaFoldLRScheduler(
-            optimizer,
-            **self.config.scheduler
-        )
+        lr_scheduler = AlphaFoldLRScheduler(optimizer, **self.config.scheduler)
 
         scheduler = {"scheduler": lr_scheduler, "interval": "step", "frequency": 1}
 
         return [optimizer], [scheduler]
 
-
     def on_load_checkpoint(self, checkpoint):
         ema = checkpoint["ema"]
-        if(not self.model.template_config.enabled):
-            ema["params"] = {k:v for k,v in ema["params"].items() if not "template" in k}
+        if (not self.model.template_config.enabled):
+            ema["params"] = {
+                k: v
+                for k, v in ema["params"].items() if not "template" in k
+            }
         self.ema.load_state_dict(ema)
 
     def on_save_checkpoint(self, checkpoint):
@@ -509,15 +507,10 @@ class OpenFoldWrapper(pl.LightningModule):
                      f" = {cur_openmm}".format(lr_step))
 
     def load_from_jax(self, jax_path):
-        model_basename = os.path.splitext(
-                os.path.basename(
-                    os.path.normpath(jax_path)
-                )
-        )[0]
+        model_basename = os.path.splitext(os.path.basename(os.path.normpath(jax_path)))[0]
         model_version = "_".join(model_basename.split("_")[1:])
-        import_jax_weights_(
-                self.model, jax_path, version=model_version
-        )
+        import_jax_weights_(self.model, jax_path, version=model_version)
+
 
 def update_openmm_config(config, args):
     config.loss.openmm.use_openmm = args.use_openmm
@@ -553,13 +546,23 @@ def update_openmm_config(config, args):
     config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
     config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
     config.model.structure_module.angle_transformer_layers = args.angle_transformer_layers
+    
+    if args.use_angle_transformer:
+        config.model.structure_module.c_resnet = args.angle_transformer_hidden
+    config.model.structure_module.angle_transformer_activation = args.angle_transformer_activation
+    config.loss.supervised_chi.chi_weight = args.chi_weight  # Fix
+
     if args.angle_loss_only:
-        for loss_key in ['distogram', 'experimentally_resolved', 'fape', 'plddt_loss',
-                         'masked_msa', 'violation', 'tm', 'openmm']:
+        for loss_key in [
+                'distogram', 'experimentally_resolved', 'fape', 'plddt_loss',
+                'masked_msa', 'violation', 'tm', 'openmm'
+        ]:
             config.loss[loss_key].weight = 0.
     if args.angle_like_loss_only:
-        for loss_key in ['distogram', 'experimentally_resolved', 'plddt_loss',
-                         'masked_msa', 'tm', 'openmm']:
+        for loss_key in [
+                'distogram', 'experimentally_resolved', 'plddt_loss', 'masked_msa', 'tm',
+                'openmm'
+        ]:
             config.loss[loss_key].weight = 0.
 
     config.loss.openmm.add_relu = args.add_relu_to_omm_loss
@@ -607,11 +610,9 @@ def update_experimental_config(config, args):
         print("Overwriting batch size to", args.batch_size)
 
 
-
-
 def main(args):
-    if(args.seed is not None):
-        seed_everything(args.seed) 
+    if (args.seed is not None):
+        seed_everything(args.seed)
 
     config = model_config(
         args.config_preset,
@@ -639,48 +640,60 @@ def main(args):
                 last_global_step = 0
         model_module.resume_last_lr_step(last_global_step)
         logging.info("Successfully loaded last lr step...")
-    if(args.resume_from_ckpt and args.resume_model_weights_only):
-        if(os.path.isdir(args.resume_from_ckpt)):
+    if (args.resume_from_ckpt and args.resume_model_weights_only):
+        if (os.path.isdir(args.resume_from_ckpt)):
             sd = get_fp32_state_dict_from_zero_checkpoint(args.resume_from_ckpt)
         else:
             sd = torch.load(args.resume_from_ckpt)
         # MOD-JK: there is no 'module.' prefix in the state dict; instead, it is missing the expected  `model.` prefix. This applies to initial_training and finetuning.pt files.
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
+        # If we're loading weights for the angle transformer, don't load those now.
+        if args.angle_transformer_checkpoint is not None:
+            sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
         model_module.load_state_dict(sd, strict=False)
-        model_module.reinit_ema()  # NOTE-JK We do this so that the EMA loads the correct weights
+        model_module.reinit_ema(
+        )  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.info("Successfully loaded model weights...")
-    if(args.resume_from_jax_params):
+    if (args.resume_from_jax_params):
         model_module.load_from_jax(args.resume_from_jax_params)
-        logging.info(f"Successfully loaded JAX parameters at {args.resume_from_jax_params}...")
+        logging.info(
+            f"Successfully loaded JAX parameters at {args.resume_from_jax_params}...")
     if args.set_lr_step is not None:
         model_module.resume_last_lr_step(args.set_lr_step)
         logging.info(f"Successfully set lr step to {args.set_lr_step}...")
- 
+
+    # Load angle transformer checkpoint, if provided
+    if args.angle_transformer_checkpoint is not None:
+        sd = torch.load(args.angle_transformer_checkpoint)['state_dict']
+        # sd = {k.replace("at.", "model.structure_module.angle_resnet."): v for k, v in sd.items()}
+        sd = {k.replace("at.", ""): v for k, v in sd.items()}
+        model_module.model.structure_module.angle_resnet.load_state_dict(sd, strict=True)
+        logging.info("Successfully loaded angle transformer weights...")
+
     # TorchScript components of the model
-    if(args.script_modules):
+    if (args.script_modules):
         script_preset_(model_module)
 
     #data_module = DummyDataLoader("new_batch.pickle")
-    data_module = OpenFoldDataModule(
-        config=config.data, 
-        batch_seed=args.seed,
-        **vars(args)
-    )
+    data_module = OpenFoldDataModule(config=config.data,
+                                     batch_seed=args.seed,
+                                     **vars(args))
 
     data_module.prepare_data()
     data_module.setup()
 
     loggers = []
     wdb_logger = None
-    if(args.wandb):
+    if (args.wandb):
         wdb_logger = WandbLogger(
             name=args.experiment_name,
             save_dir=args.output_dir,
             id=args.wandb_id,
             project=args.wandb_project,
             notes=args.wandb_notes,
-            tags=[tag for tag in args.wandb_tags.split(",") if tag] if args.wandb_tags else None,
+            tags=[tag for tag in args.wandb_tags.split(",")
+                  if tag] if args.wandb_tags else None,
             resume=args.wandb_id if args.wandb_id else None,
             group=args.experiment_name if args.experiment_name else "default_group",
             **{"entity": args.wandb_entity},
@@ -689,7 +702,7 @@ def main(args):
         wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
         loggers.append(wdb_logger)
         print("Experiment dir:", wdb_logger.experiment.dir)
-    
+
     callbacks = []
     if args.checkpoint_every_n_train_steps is not None:
         print("Checkpointing every", args.checkpoint_every_n_train_steps, "train steps.")
@@ -699,10 +712,9 @@ def main(args):
             save_top_k=1,
             monitor="train/loss",
             # dirpath=wdb_logger.experiment.dir if args.wandb else None,
-            verbose=True
-        )
+            verbose=True)
         callbacks.append(mc)
-    elif(args.checkpoint_every_epoch):
+    elif (args.checkpoint_every_epoch):
         print("Checkpointing every epoch.")
         mc = ModelCheckpoint(
             every_n_epochs=1,
@@ -720,18 +732,16 @@ def main(args):
             verbose=True,
             mode="max",
         )
-        best_openmm = ModelCheckpoint(
-            every_n_epochs=1,
-            auto_insert_metric_name=False,
-            save_top_k=1,
-            monitor="val/openmm_unscaled",
-            verbose=True,
-            mode="min",
-            filename="{epoch}-{step}-bestopenmm"
-        )
+        best_openmm = ModelCheckpoint(every_n_epochs=1,
+                                      auto_insert_metric_name=False,
+                                      save_top_k=1,
+                                      monitor="val/openmm_unscaled",
+                                      verbose=True,
+                                      mode="min",
+                                      filename="{epoch}-{step}-bestopenmm")
         callbacks.extend([mc, mc_last, best_openmm])
 
-    if(args.early_stopping):
+    if (args.early_stopping):
         es = EarlyStoppingVerbose(
             monitor="val/lddt_aa",
             min_delta=args.min_delta,
@@ -744,7 +754,7 @@ def main(args):
         )
         callbacks.append(es)
 
-    if(args.log_performance):
+    if (args.log_performance):
         global_batch_size = args.num_nodes * args.gpus
         perf = PerformanceLoggingCallback(
             log_file=os.path.join(args.output_dir, "performance_log.json"),
@@ -752,24 +762,21 @@ def main(args):
         )
         callbacks.append(perf)
 
-    if(not args.do_not_log_lr):
+    if (not args.do_not_log_lr):
         lr_monitor = LearningRateMonitor(logging_interval="step")
         callbacks.append(lr_monitor)
 
-
-    if(args.deepspeed_config_path is not None):
-        strategy = DeepSpeedPlugin(
-            config=args.deepspeed_config_path,
-        )
-        if(args.wandb):
+    if (args.deepspeed_config_path is not None):
+        strategy = DeepSpeedPlugin(config=args.deepspeed_config_path, )
+        if (args.wandb):
             wdb_logger.experiment.save(args.deepspeed_config_path)
             wdb_logger.experiment.save("openfold/config.py")
     elif (args.gpus is not None and args.gpus > 1) or args.num_nodes > 1:
         strategy = DDPPlugin(find_unused_parameters=False)
     else:
         strategy = None
- 
-    if(args.wandb):
+
+    if (args.wandb):
         freeze_path = f"{wdb_logger.experiment.dir}/package_versions.txt"
         os.system(f"{sys.executable} -m pip freeze > {freeze_path}")
         wdb_logger.experiment.save(f"{freeze_path}")
@@ -777,7 +784,6 @@ def main(args):
     # MOD-JK Add advanced profiling
     # from pytorch_lightning.profiler import AdvancedProfiler
     # profiler = AdvancedProfiler(dirpath=".", filename="perf_logs03")
-
 
     if args.auto_slurm_resubmit:
         trainer = pl.Trainer.from_argparse_args(
@@ -799,7 +805,7 @@ def main(args):
             # profiler="simple",
         )
 
-    if(args.resume_model_weights_only):
+    if (args.resume_model_weights_only):
         ckpt_path = None
     else:
         ckpt_path = args.resume_from_ckpt
@@ -809,17 +815,17 @@ def main(args):
         if args.run_validate_first:
             trainer.validate(
                 model_module,
-                dataloaders=data_module.val_dataloader(), 
+                dataloaders=data_module.val_dataloader(),
                 ckpt_path=ckpt_path,
             )
         trainer.fit(
-            model_module, 
+            model_module,
             datamodule=data_module,
             ckpt_path=ckpt_path,
         )
     elif args.trainer_mode == "fit":
         trainer.fit(
-            model_module, 
+            model_module,
             datamodule=data_module,
             ckpt_path=ckpt_path,
         )
@@ -827,7 +833,7 @@ def main(args):
         print("Validating on train set.")
         trainer.validate(
             model_module,
-            dataloaders=data_module.train_dataloader(), 
+            dataloaders=data_module.train_dataloader(),
             ckpt_path=ckpt_path,
             verbose=True,
         )
@@ -836,7 +842,7 @@ def main(args):
         model_module.csv_path = os.path.join(args.output_dir, "val_results.csv")
         results = trainer.validate(
             model_module,
-            dataloaders=data_module.val_dataloader(), 
+            dataloaders=data_module.val_dataloader(),
             ckpt_path=ckpt_path,
             verbose=True,
         )
@@ -851,7 +857,7 @@ def main(args):
         model_module.csv_path = os.path.join(args.output_dir, "val_results.csv")
         results = trainer.validate(
             model_module,
-            dataloaders=data_module.val_dataloader(), 
+            dataloaders=data_module.val_dataloader(),
             ckpt_path=ckpt_path,
             verbose=True,
         )
@@ -865,16 +871,14 @@ def main(args):
         model_module.csv_path = os.path.join(args.output_dir, "test_results.csv")
         args.val_data_dir = args.test_data_dir
         args.val_alignment_dir = args.test_alignment_dir
-        data_module = OpenFoldDataModule(
-            config=config.data, 
-            batch_seed=args.seed,
-            **vars(args)
-        )
+        data_module = OpenFoldDataModule(config=config.data,
+                                         batch_seed=args.seed,
+                                         **vars(args))
         data_module.prepare_data()
         data_module.setup()
         results = trainer.validate(
             model_module,
-            dataloaders=data_module.val_dataloader(), 
+            dataloaders=data_module.val_dataloader(),
             ckpt_path=ckpt_path,
             verbose=True,
         )
@@ -890,11 +894,9 @@ def main(args):
         model_module.csv_path = os.path.join(args.output_dir, "test_results.csv")
         args.val_data_dir = args.test_data_dir
         args.val_alignment_dir = args.test_alignment_dir
-        data_module = OpenFoldDataModule(
-            config=config.data,
-            batch_seed=args.seed,
-            **vars(args)
-        )
+        data_module = OpenFoldDataModule(config=config.data,
+                                         batch_seed=args.seed,
+                                         **vars(args))
         data_module.prepare_data()
         data_module.setup()
         results = trainer.validate(
@@ -923,28 +925,27 @@ def main(args):
                 val_cache_data[n]["s"].append(s)
                 val_cache_data[n]["s_initial"].append(s_initial)
             else:
-                val_cache_data[n] = {
-                    "s": [s],
-                    "s_initial": [s_initial]
-                }
+                val_cache_data[n] = {"s": [s], "s_initial": [s_initial]}
+
         _val_sm_hook = model_module.model.structure_module.register_forward_hook(sm_hook)
 
         def val_loss_hook(module, _input, _output):
             n = val_cache_data["current_datapt_number"]
             out, batch = _input
             d = {
-                    "aatype": batch["aatype"].detach().cpu(),
-                    "seq_mask": batch["seq_mask"].detach().cpu(),
-                    "chi_mask": batch["chi_mask"].detach().cpu(),
-                    "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
-                    "name": batch["name"][0],
-                }
+                "aatype": batch["aatype"].detach().cpu(),
+                "seq_mask": batch["seq_mask"].detach().cpu(),
+                "chi_mask": batch["chi_mask"].detach().cpu(),
+                "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
+                "name": batch["name"][0],
+            }
             val_cache_data[n].update(d)
             val_cache_data["current_datapt_number"] = n + 1
             print("datapt_number", val_cache_data["current_datapt_number"])
-            
+
             # Save to individual file
-            tiny_file = os.path.join(args.output_dir, "indiv_val", f"{torch.distributed.get_rank()}_{n:06}.pkl")
+            tiny_file = os.path.join(args.output_dir, "indiv_val",
+                                     f"{torch.distributed.get_rank()}_{n:06}.pkl")
             # Make sure the directory exists
             os.makedirs(os.path.dirname(tiny_file), exist_ok=True)
             with open(tiny_file, "wb") as f:
@@ -965,12 +966,13 @@ def main(args):
         _val_sm_hook.remove()
         _vlhook.remove()
 
-        CACHE_OUTPUT_FILE = os.path.join(args.output_dir, "angle_transformer_intermediates.pkl")
+        CACHE_OUTPUT_FILE = os.path.join(args.output_dir,
+                                         "angle_transformer_intermediates.pkl")
 
         # with open(CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_val.pkl"), "wb") as f:
         #     pickle.dump(val_cache_data, f)
         #     print("Saved angle transformer intermediates to", CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_val.pkl"))
-        
+
         del val_cache_data
         torch.cuda.empty_cache()
 
@@ -989,31 +991,32 @@ def main(args):
                 train_cache_data[n]["s"].append(s)
                 train_cache_data[n]["s_initial"].append(s_initial)
             else:
-                train_cache_data[n] = {
-                    "s": [s],
-                    "s_initial": [s_initial]
-                }
-        _train_sm_hook = model_module.model.structure_module.register_forward_hook(sm_hook)
+                train_cache_data[n] = {"s": [s], "s_initial": [s_initial]}
+
+        _train_sm_hook = model_module.model.structure_module.register_forward_hook(
+            sm_hook)
 
         def train_loss_hook(module, _input, _output):
             n = train_cache_data["current_datapt_number"]
             out, batch = _input
             d = {
-                    "aatype": batch["aatype"].detach().cpu(),
-                    "seq_mask": batch["seq_mask"].detach().cpu(),
-                    "chi_mask": batch["chi_mask"].detach().cpu(),
-                    "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
-                    "name": batch["name"][0],
-                }
+                "aatype": batch["aatype"].detach().cpu(),
+                "seq_mask": batch["seq_mask"].detach().cpu(),
+                "chi_mask": batch["chi_mask"].detach().cpu(),
+                "chi_angles_sin_cos": batch["chi_angles_sin_cos"].detach().cpu(),
+                "name": batch["name"][0],
+            }
             train_cache_data[n].update(d)
             train_cache_data["current_datapt_number"] = n + 1
             print("datapt_number", train_cache_data["current_datapt_number"])
             # Save to individual file
-            tiny_file = os.path.join(args.output_dir, "indiv_train", f"{torch.distributed.get_rank()}_{n:06}.pkl")
+            tiny_file = os.path.join(args.output_dir, "indiv_train",
+                                     f"{torch.distributed.get_rank()}_{n:06}.pkl")
             os.makedirs(os.path.dirname(tiny_file), exist_ok=True)
             with open(tiny_file, "wb") as f:
                 pickle.dump(train_cache_data[n], f)
             print("Saved angle transformer intermediates to", tiny_file)
+
         _train_loss_hook = model_module.loss.register_forward_hook(train_loss_hook)
 
         print("Validating on train set.")
@@ -1027,13 +1030,12 @@ def main(args):
         _train_sm_hook.remove()
         _train_loss_hook.remove()
 
-        CACHE_OUTPUT_FILE = os.path.join(args.output_dir, "angle_transformer_intermediates.pkl")
+        CACHE_OUTPUT_FILE = os.path.join(args.output_dir,
+                                         "angle_transformer_intermediates.pkl")
 
         # with open(CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_train.pkl"), "wb") as f:
         #     pickle.dump(train_cache_data, f)
         #     print("Saved angle transformer intermediates to", CACHE_OUTPUT_FILE.replace(".pkl", f"{torch.distributed.get_rank()}_train.pkl"))
-
-    
 
     else:
         raise ValueError(f"Unknown trainer mode: {args.trainer_mode}")
@@ -1067,179 +1069,186 @@ def load_jax_params_into_model(param_path, model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("train_data_dir",
+                        type=str,
+                        help="Directory containing training mmCIF files")
+    parser.add_argument("train_alignment_dir",
+                        type=str,
+                        help="Directory containing precomputed training alignments")
+    parser.add_argument("template_mmcif_dir",
+                        type=str,
+                        help="Directory containing mmCIF files to search for templates")
     parser.add_argument(
-        "train_data_dir", type=str,
-        help="Directory containing training mmCIF files"
-    )
-    parser.add_argument(
-        "train_alignment_dir", type=str,
-        help="Directory containing precomputed training alignments"
-    )
-    parser.add_argument(
-        "template_mmcif_dir", type=str,
-        help="Directory containing mmCIF files to search for templates"
-    )
-    parser.add_argument(
-        "output_dir", type=str,
+        "output_dir",
+        type=str,
         help='''Directory in which to output checkpoints, logs, etc. Ignored
-                if not on rank 0'''
-    )
+                if not on rank 0''')
     parser.add_argument(
-        "max_template_date", type=str,
+        "max_template_date",
+        type=str,
         help='''Cutoff for all templates. In training mode, templates are also 
-                filtered by the release date of the target'''
-    )
-    parser.add_argument(
-        "--distillation_data_dir", type=str, default=None,
-        help="Directory containing training PDB files"
-    )
-    parser.add_argument(
-        "--distillation_alignment_dir", type=str, default=None,
-        help="Directory containing precomputed distillation alignments"
-    )
-    parser.add_argument(
-        "--val_data_dir", type=str, default=None,
-        help="Directory containing validation mmCIF files"
-    )
-    parser.add_argument(
-        "--val_alignment_dir", type=str, default=None,
-        help="Directory containing precomputed validation alignments"
-    )
-    parser.add_argument(
-        "--test_data_dir", type=str, default=None,
-        help="Directory containing test mmCIF files"
-    )
-    parser.add_argument(
-        "--test_alignment_dir", type=str, default=None,
-        help="Directory containing precomputed test alignments"
-    )
-    parser.add_argument(
-        "--kalign_binary_path", type=str, default='/usr/bin/kalign',
-        help="Path to the kalign binary"
-    )
-    parser.add_argument(
-        "--train_filter_path", type=str, default=None,
-        help='''Optional path to a text file containing names of training
+                filtered by the release date of the target''')
+    parser.add_argument("--distillation_data_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing training PDB files")
+    parser.add_argument("--distillation_alignment_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing precomputed distillation alignments")
+    parser.add_argument("--val_data_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing validation mmCIF files")
+    parser.add_argument("--val_alignment_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing precomputed validation alignments")
+    parser.add_argument("--test_data_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing test mmCIF files")
+    parser.add_argument("--test_alignment_dir",
+                        type=str,
+                        default=None,
+                        help="Directory containing precomputed test alignments")
+    parser.add_argument("--kalign_binary_path",
+                        type=str,
+                        default='/usr/bin/kalign',
+                        help="Path to the kalign binary")
+    parser.add_argument("--train_filter_path",
+                        type=str,
+                        default=None,
+                        help='''Optional path to a text file containing names of training
                 examples to include, one per line. Used to filter the training 
-                set'''
-    )
+                set''')
+    parser.add_argument("--distillation_filter_path",
+                        type=str,
+                        default=None,
+                        help="""See --train_filter_path""")
     parser.add_argument(
-        "--distillation_filter_path", type=str, default=None,
-        help="""See --train_filter_path"""
-    )
-    parser.add_argument(
-        "--obsolete_pdbs_file_path", type=str, default=None,
+        "--obsolete_pdbs_file_path",
+        type=str,
+        default=None,
         help="""Path to obsolete.dat file containing list of obsolete PDBs and 
-             their replacements."""
-    )
+             their replacements.""")
     parser.add_argument(
-        "--template_release_dates_cache_path", type=str, default=None,
+        "--template_release_dates_cache_path",
+        type=str,
+        default=None,
         help="""Output of scripts/generate_mmcif_cache.py run on template mmCIF
-                files."""
-    )
+                files.""")
+    parser.add_argument("--use_small_bfd",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to use a reduced version of the BFD database")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed")
     parser.add_argument(
-        "--use_small_bfd", type=bool_type, default=False,
-        help="Whether to use a reduced version of the BFD database"
-    )
+        "--deepspeed_config_path",
+        type=str,
+        default=None,
+        help="Path to DeepSpeed config. If not provided, DeepSpeed is disabled")
     parser.add_argument(
-        "--seed", type=int, default=None,
-        help="Random seed"
-    )
+        "--checkpoint_every_epoch",
+        action="store_true",
+        default=False,
+        help="""Whether to checkpoint at the end of every training epoch""")
     parser.add_argument(
-        "--deepspeed_config_path", type=str, default=None,
-        help="Path to DeepSpeed config. If not provided, DeepSpeed is disabled"
-    )
+        "--early_stopping",
+        type=bool_type,
+        default=False,
+        help="Whether to stop training when validation loss fails to decrease")
     parser.add_argument(
-        "--checkpoint_every_epoch", action="store_true", default=False,
-        help="""Whether to checkpoint at the end of every training epoch"""
-    )
-    parser.add_argument(
-        "--early_stopping", type=bool_type, default=False,
-        help="Whether to stop training when validation loss fails to decrease"
-    )
-    parser.add_argument(
-        "--min_delta", type=float, default=0,
+        "--min_delta",
+        type=float,
+        default=0,
         help="""The smallest decrease in validation loss that counts as an 
-                improvement for the purposes of early stopping"""
+                improvement for the purposes of early stopping""")
+    parser.add_argument("--patience", type=int, default=3, help="Early stopping patience")
+    parser.add_argument(
+        "--resume_from_ckpt",
+        type=str,
+        default=None,
+        help="Path to a model checkpoint from which to restore training state")
+    parser.add_argument(
+        "--resume_model_weights_only",
+        type=bool_type,
+        default=False,
+        help="Whether to load just model weights as opposed to training state")
+    parser.add_argument(
+        "--resume_from_jax_params",
+        type=str,
+        default=None,
+        help="""Path to an .npz JAX parameter file with which to initialize the model""")
+    parser.add_argument("--log_performance",
+                        type=bool_type,
+                        default=False,
+                        help="Measure performance")
+    parser.add_argument("--wandb",
+                        action="store_true",
+                        default=False,
+                        help="Whether to log metrics to Weights & Biases")
+    parser.add_argument("--experiment_name",
+                        type=str,
+                        default=None,
+                        help="Name of the current experiment. Used for wandb logging")
+    parser.add_argument("--wandb_id",
+                        type=str,
+                        default=None,
+                        help="ID of a previous run to be resumed")
+    parser.add_argument("--wandb_project",
+                        type=str,
+                        default=None,
+                        help="Name of the wandb project to which this run will belong")
+    parser.add_argument("--wandb_entity",
+                        type=str,
+                        default=None,
+                        help="wandb username or team name to which runs are attributed")
+    parser.add_argument("--script_modules",
+                        type=bool_type,
+                        default=False,
+                        help="Whether to TorchScript eligible components of them model")
+    parser.add_argument(
+        "--train_chain_data_cache_path",
+        type=str,
+        default=None,
     )
     parser.add_argument(
-        "--patience", type=int, default=3,
-        help="Early stopping patience"
+        "--distillation_chain_data_cache_path",
+        type=str,
+        default=None,
     )
     parser.add_argument(
-        "--resume_from_ckpt", type=str, default=None,
-        help="Path to a model checkpoint from which to restore training state"
+        "--train_epoch_len",
+        type=int,
+        default=10000,
+        help=("The virtual length of each training epoch. Stochastic filtering "
+              "of training data means that training datasets have no "
+              "well-defined length. This virtual length affects frequency of "
+              "validation & checkpointing (by default, one of each per epoch)."))
+    parser.add_argument(
+        "--do_not_log_lr",
+        action="store_true",
+        default=False,
+        help=
+        "Whether to log the actual learning rate. If this flag is not passed, Lr is logged."
     )
     parser.add_argument(
-        "--resume_model_weights_only", type=bool_type, default=False,
-        help="Whether to load just model weights as opposed to training state"
-    )
+        "--config_preset",
+        type=str,
+        default="initial_training",
+        help=('Config setting. Choose e.g. "initial_training", "finetuning", '
+              '"model_1", etc. By default, the actual values in the config are '
+              'used.'))
     parser.add_argument(
-        "--resume_from_jax_params", type=str, default=None,
-        help="""Path to an .npz JAX parameter file with which to initialize the model"""
+        "--_distillation_structure_index_path",
+        type=str,
+        default=None,
     )
-    parser.add_argument(
-        "--log_performance", type=bool_type, default=False,
-        help="Measure performance"
-    )
-    parser.add_argument(
-        "--wandb", action="store_true", default=False,
-        help="Whether to log metrics to Weights & Biases"
-    )
-    parser.add_argument(
-        "--experiment_name", type=str, default=None,
-        help="Name of the current experiment. Used for wandb logging"
-    )
-    parser.add_argument(
-        "--wandb_id", type=str, default=None,
-        help="ID of a previous run to be resumed"
-    )
-    parser.add_argument(
-        "--wandb_project", type=str, default=None,
-        help="Name of the wandb project to which this run will belong"
-    )
-    parser.add_argument(
-        "--wandb_entity", type=str, default=None,
-        help="wandb username or team name to which runs are attributed"
-    )
-    parser.add_argument(
-        "--script_modules", type=bool_type, default=False,
-        help="Whether to TorchScript eligible components of them model"
-    )
-    parser.add_argument(
-        "--train_chain_data_cache_path", type=str, default=None,
-    )
-    parser.add_argument(
-        "--distillation_chain_data_cache_path", type=str, default=None,
-    )
-    parser.add_argument(
-        "--train_epoch_len", type=int, default=10000,
-        help=(
-            "The virtual length of each training epoch. Stochastic filtering "
-            "of training data means that training datasets have no "
-            "well-defined length. This virtual length affects frequency of "
-            "validation & checkpointing (by default, one of each per epoch)."
-        )
-    )
-    parser.add_argument(
-        "--do_not_log_lr", action="store_true", default=False,
-        help="Whether to log the actual learning rate. If this flag is not passed, Lr is logged."
-    )
-    parser.add_argument(
-        "--config_preset", type=str, default="initial_training",
-        help=(
-            'Config setting. Choose e.g. "initial_training", "finetuning", '
-            '"model_1", etc. By default, the actual values in the config are '
-            'used.'
-        )
-    )
-    parser.add_argument(
-        "--_distillation_structure_index_path", type=str, default=None,
-    )
-    parser.add_argument(
-        "--alignment_index_path", type=str, default=None,
-        help="Training alignment index. See the README for instructions."
-    )
+    parser.add_argument("--alignment_index_path",
+                        type=str,
+                        default=None,
+                        help="Training alignment index. See the README for instructions.")
     parser.add_argument("--num_workers",
                         type=int,
                         default=8,
@@ -1294,7 +1303,7 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to use SidechainNet names for val data.")
-    parser.add_argument("--wandb_notes", 
+    parser.add_argument("--wandb_notes",
                         "-wn",
                         type=str,
                         default=None,
@@ -1307,34 +1316,40 @@ if __name__ == "__main__":
                         type=float,
                         default=1e6,
                         help="Value for clipping OpenMM force gradients.")
-    parser.add_argument("--use_lma", 
-                        type=bool_type,
-                        default=False,
-                        help="Whether to use low memory attention (mutually exclusive with flash attn).")
-    parser.add_argument("--use_flash_attn", 
-                        type=bool_type,
-                        default=False,
-                        help="Whether to use flash attention (mutually exclusive with LMA).")
-    parser.add_argument("--clear_cache_between_blocks",
-                        type=bool_type,
-                        default=False,
-                        help="Whether to clear the cache between blocks in extra_msa_stack")
-    parser.add_argument("--openmm_squashed_loss",
-                        type=bool_type,
-                        default=False,
-                        help="A modified version of OpenMM loss meant to squash large values."
-                        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
-    parser.add_argument("--openmm_squashed_loss_factor",
-                        type=float,
-                        default=100.,
-                        help="A modified version of OpenMM loss meant to squash large values."
-                        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
-    parser.add_argument("--openmm_modified_sigmoid",
-                        type=str,
-                        default="",
-                        help="A modified version of OpenMM loss meant to squash large values."
-                             "L(x,a,b,c,d) = (1/a + exp(-(d*x+b)/c))**(-1) - (a-1)."
-                             "The argument is a comma-separated list of the parameters a,b,c,d.")
+    parser.add_argument(
+        "--use_lma",
+        type=bool_type,
+        default=False,
+        help="Whether to use low memory attention (mutually exclusive with flash attn).")
+    parser.add_argument(
+        "--use_flash_attn",
+        type=bool_type,
+        default=False,
+        help="Whether to use flash attention (mutually exclusive with LMA).")
+    parser.add_argument(
+        "--clear_cache_between_blocks",
+        type=bool_type,
+        default=False,
+        help="Whether to clear the cache between blocks in extra_msa_stack")
+    parser.add_argument(
+        "--openmm_squashed_loss",
+        type=bool_type,
+        default=False,
+        help="A modified version of OpenMM loss meant to squash large values."
+        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
+    parser.add_argument(
+        "--openmm_squashed_loss_factor",
+        type=float,
+        default=100.,
+        help="A modified version of OpenMM loss meant to squash large values."
+        " Loss(e) = e if e < 0 else e*(C/(C+E)).")
+    parser.add_argument(
+        "--openmm_modified_sigmoid",
+        type=str,
+        default="",
+        help="A modified version of OpenMM loss meant to squash large values."
+        "L(x,a,b,c,d) = (1/a + exp(-(d*x+b)/c))**(-1) - (a-1)."
+        "The argument is a comma-separated list of the parameters a,b,c,d.")
     parser.add_argument("--wandb_tags",
                         type=str,
                         default="",
@@ -1344,7 +1359,7 @@ if __name__ == "__main__":
                         default=None,
                         help="Weight applied to the violation loss.")
     parser.add_argument("--exp_resolved_loss_weight",
-                        type=float, 
+                        type=float,
                         default=None,
                         help="Weight applied to the experimentally resolved loss.")
     parser.add_argument("--set_lr_step",
@@ -1379,10 +1394,12 @@ if __name__ == "__main__":
                         type=int_or_none_type,
                         default=None,
                         help="Number of steps after which to decay the LR.")
-    parser.add_argument("--trainer_mode",
-                        type=str,
-                        default="fit",
-                        help="Mode for the trainer. Can be one of ['fit', 'validate']. Defaults to 'fit'.")
+    parser.add_argument(
+        "--trainer_mode",
+        type=str,
+        default="fit",
+        help="Mode for the trainer. Can be one of ['fit', 'validate']. Defaults to 'fit'."
+    )
     parser.add_argument("--use_alphafold_sampling",
                         type=bool_type,
                         default=True,
@@ -1423,7 +1440,7 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to use OpenMM LR warmup. Scales the value of OpenMM"
-                             " linearly from 1e-4 to 1 over 1000 steps..")
+                        " linearly from 1e-4 to 1 over 1000 steps..")
     parser.add_argument("--openmm_warmup_steps",
                         type=int,
                         default=1000,
@@ -1436,12 +1453,12 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether to use a Transformer for torsion angle prediction"
-                             " instead of the typical ResNet.")
+                        " instead of the typical ResNet.")
     parser.add_argument("--train_only_angle_predictor",
                         type=bool_type,
                         default=False,
                         help="Whether to train only the angle predictor. If True, all"
-                             "other parameters will be frozen for training.")
+                        "other parameters will be frozen for training.")
     parser.add_argument("--angle_transformer_dropout",
                         type=float,
                         default=0.1,
@@ -1458,6 +1475,23 @@ if __name__ == "__main__":
                         type=int,
                         default=2,
                         help="Number of layers to use for the angle transformer.")
+    parser.add_argument("--angle_transformer_hidden",
+                        type=int,
+                        default=2048,
+                        help="Size of hidden dim for the angle transformer.")
+    parser.add_argument(
+        "--angle_transformer_activation",
+        type=str,
+        choices=["relu", "gelu"],
+        default="relu",
+        help="Activation for transformer.",
+    )
+    parser.add_argument(
+        "--chi_weight",
+        type=float,
+        default=1,
+        help="Scale for sq_chi_loss weight vs angle_norm.",
+    )
     parser.add_argument("--add_relu_to_omm_loss",
                         type=bool_type,
                         default=False,
@@ -1476,37 +1510,38 @@ if __name__ == "__main__":
                         default="",
                         help="Path to save angle transformer intermediates. If empty, "
                         "intermediates will not be saved.")
+    parser.add_argument("--angle_transformer_checkpoint",
+                        type=str,
+                        default=None,
+                        help="Path to checkpoint for angle transformer.")
 
     parser = pl.Trainer.add_argparse_args(parser)
-   
+
     # Disable the initial validation pass
-    parser.set_defaults(
-        num_sanity_val_steps=0,
-    )
+    parser.set_defaults(num_sanity_val_steps=0, )
 
     # Remove some buggy/redundant arguments introduced by the Trainer
     remove_arguments(
-        parser, 
+        parser,
         [
-            # "--accelerator", 
+            # "--accelerator",
             "--resume_from_checkpoint",
             "--reload_dataloaders_every_epoch",
             "--reload_dataloaders_every_n_epochs",
-        ]
-    ) 
+        ])
 
     args = parser.parse_args()
 
-    if(args.seed is None and 
-        ((args.gpus is not None and args.gpus > 1) or 
-         (args.num_nodes is not None and args.num_nodes > 1))):
+    if (args.seed is None and ((args.gpus is not None and args.gpus > 1) or
+                               (args.num_nodes is not None and args.num_nodes > 1))):
         raise ValueError("For distributed training, --seed must be specified")
 
-    if(str(args.precision) == "16" and args.deepspeed_config_path is not None):
+    if (str(args.precision) == "16" and args.deepspeed_config_path is not None):
         raise ValueError("DeepSpeed and FP16 training are not compatible")
 
-    if(args.resume_from_jax_params is not None and args.resume_from_ckpt is not None):
-        raise ValueError("Choose between loading pretrained Jax-weights and a checkpoint-path")
+    if (args.resume_from_jax_params is not None and args.resume_from_ckpt is not None):
+        raise ValueError(
+            "Choose between loading pretrained Jax-weights and a checkpoint-path")
 
     # This re-applies the training-time filters at the beginning of every epoch
     args.reload_dataloaders_every_n_epochs = 1
@@ -1520,7 +1555,8 @@ if __name__ == "__main__":
         root.setLevel(logging.WARNING)
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(logging.WARNING)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         root.addHandler(handler)
 

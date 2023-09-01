@@ -1672,9 +1672,8 @@ class AlphaFoldLoss(nn.Module):
             elif loss_name == "supervised_chi":
                 loss_dict = loss_fn()
                 loss = loss_dict["loss"]
-                losses["sq_chi_loss"] = loss_dict["sq_chi_loss"]
-                losses["angle_norm_loss"] = loss_dict["angle_norm_loss"]
-                losses['angle_mae'] = loss_dict['angle_mae']
+                del loss_dict["loss"]
+                losses.update(loss_dict)
             else:
                 loss = loss_fn()
             if (torch.isnan(loss) or torch.isinf(loss)):
