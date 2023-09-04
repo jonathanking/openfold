@@ -1,26 +1,30 @@
 #!/bin/bash
-#SBATCH --job-name=AT-OMM
+#SBATCH --job-name=AT-OMMb
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=28-00:00:00
-#SBATCH --partition=dept_gpu
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --nodelist=g019
-#SBATCH --ntasks-per-node=32
+#SBATCH --ntasks-per-node=42
+#SBATCH --partition=a100_nvlink
+#SBATCH --cluster=gpu
+#SBATCH --time=3-00:00:00
+#SBATCH --qos=normal
+#SBATCH --constraint=80g
+#SBATCH --exclude=gpu-n31
+
+
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMMb"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "This will be called ${EXPERIMENT_ID}."
 echo "Trying to finetune the angle transformer model."
-echo "Fixing ntasks-per-node and cpus per task"
 
 ############################
 ##       Environment      ##
@@ -47,18 +51,10 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-# TRAIN_STRUCTURES_DIR=data/train_structs/scnunmin_structs0530/
-# ALIGNMENTS_DIR=data/alignments/scnmin_alignments0530/  
-# TEMPLATE_STRUCTURES_DIR=data/template_structs/roda_pdbs_snapshotted_flattened_do_not_overwrite/
-# TRAIN_CACHE=data/caches/scnmin_structs0530_cache.json
-# TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
-# VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/data_dir
-# VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/alignments
-
-CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
+# CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
 AT_CHECKPOINT="/net/pulsar/home/koes/jok120/angletransformer/out/experiments/angletransformer_solo01/uglrxl4l/checkpoints/at-epoch=12.ckpt"
-# PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
-# CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
+PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-scnmin-00-AT-OMM"
+CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
 
 if [[ "$CHECKPOINT" == *"initial_training.pt"* ]] || [[ "$CHECKPOINT" == *"finetuning_"* ]]; then
@@ -81,21 +77,22 @@ export CUDA_LAUNCH_BLOCKING=1
     --replace_sampler_ddp=True \
     --gpus=4 \
     --batch_size=1 \
-    --accumulate_grad_batches=16 \
+    --accumulate_grad_batches=32 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=500 \
-    --max_epochs=50000 \
+    --train_epoch_len=9000 \
+    --max_epochs=500 \
     --debug \
     --add_struct_metrics \
     --openmm_weight=0.01 \
     --openmm_activation=None \
     --seed=1 \
-    --num_workers=6 \
+    --debug \
+    --num_workers=7 \
     --write_pdbs \
     --write_pdbs_every_n_steps=300 \
     --log_every_n_steps=1 \
@@ -130,8 +127,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --angle_loss_only=False \
     --angle_like_loss_only=True \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
-    --add_relu_to_omm_loss=True \
-    --limit_val_batches=0
+    --add_relu_to_omm_loss=True
 
 
     
