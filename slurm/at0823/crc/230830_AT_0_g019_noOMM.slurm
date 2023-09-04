@@ -10,6 +10,8 @@
 #SBATCH --partition=a100_nvlink
 #SBATCH --qos=long
 #SBATCH --cluster=gpu
+#SBATCH --constraint=80g
+
 
 
 ############################
@@ -27,7 +29,8 @@ echo "Trying to finetune the angle transformer model."
 ##       Environment      ##
 ############################
 source scripts/activate_conda_env.sh
-module load cuda/11.5
+module load cuda/11.3.0
+module load gcc/8.2.0
 
 
 ############################
@@ -108,7 +111,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
-    --run_validate_first=False \
+    --run_validate_first=True \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
