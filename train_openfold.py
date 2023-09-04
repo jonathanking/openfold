@@ -1068,6 +1068,9 @@ def load_jax_params_into_model(param_path, model):
 
 
 if __name__ == "__main__":
+
+    print("torch.device_count()", torch.cuda.device_count())
+
     parser = argparse.ArgumentParser()
     parser.add_argument("train_data_dir",
                         type=str,
