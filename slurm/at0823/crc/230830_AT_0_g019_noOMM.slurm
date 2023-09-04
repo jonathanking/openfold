@@ -8,7 +8,6 @@
 #SBATCH --ntasks-per-node=42
 #SBATCH --partition=a100_nvlink
 #SBATCH --cluster=gpu
-#SBATCH --constraint=80g
 #SBATCH --time=6-00:00:00
 #SBATCH --qos=long
 
