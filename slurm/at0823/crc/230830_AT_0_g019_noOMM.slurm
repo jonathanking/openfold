@@ -10,6 +10,7 @@
 #SBATCH --cluster=gpu
 #SBATCH --time=6-00:00:00
 #SBATCH --qos=long
+#SBATCH --exclude=gpu-n31
 
 
 
