@@ -2,15 +2,15 @@
 #SBATCH --job-name=AT-nOMM
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
-#SBATCH --time=6-00:00:00
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=42
 #SBATCH --partition=a100_nvlink
-#SBATCH --qos=long
 #SBATCH --cluster=gpu
 #SBATCH --constraint=80g
+#SBATCH --time=6-00:00:00
+#SBATCH --qos=long
 
 
 
@@ -52,7 +52,7 @@ VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
 CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
-AT_CHECKPOINT="~/chkpts_angletransformer/at-epoch=12.ckpt"
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/at-epoch=12.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
 # CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
