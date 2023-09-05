@@ -30,8 +30,8 @@ echo "Trying to finetune the angle transformer model."
 ##       Environment      ##
 ############################
 source scripts/activate_conda_env.sh
-module load cuda/11.5
-
+module load cuda/11.3.0
+module load gcc/8.2.0
 
 ############################
 ##     Array Job Exec.    ##
