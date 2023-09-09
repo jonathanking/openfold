@@ -126,7 +126,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --angle_transformer_activation=gelu \
     --chi_weight=0.05 \
     --angle_loss_only=False \
-    --angle_like_loss_only=True \
+    --angle_like_loss_only=False \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True
 
