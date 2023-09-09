@@ -143,7 +143,8 @@ class OpenFoldWrapper(pl.LightningModule):
         else:
             phase = "val"
         for loss_name, indiv_loss in loss_breakdown.items():
-            if torch.isnan(indiv_loss) and loss_name != "loss":
+            if ((torch.is_tensor(indiv_loss) and torch.isnan(indiv_loss)) or
+                (not torch.is_tensor(indiv_loss) and np.isnan(indiv_loss))) and loss_name != "loss":
                 continue
             self.log(
                 f"{phase}/{loss_name}",
@@ -260,10 +261,11 @@ class OpenFoldWrapper(pl.LightningModule):
                 self.openmm_scheduler.step(self.global_step)
 
             return loss
-        except RuntimeError:
+        except RuntimeError as re:
+            print(re)
             gc.collect()
             torch.torch.cuda.empty_cache()
-            return None
+            return torch.tensor(0., requires_grad=True, device=self.device)
 
     def on_before_zero_grad(self, *args, **kwargs):
         self.ema.update(self.model)
@@ -649,12 +651,14 @@ def main(args):
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
         # If we're loading weights for the angle transformer, don't load those now.
-        if args.angle_transformer_checkpoint is not None:
+        if args.angle_transformer_checkpoint is not None and args.use_angle_transformer:
+            logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
         model_module.load_state_dict(sd, strict=False)
-        model_module.reinit_ema(
-        )  # NOTE-JK We do this so that the EMA loads the correct weights
-        logging.info("Successfully loaded model weights...")
+        if not args.use_angle_transformer:
+            model_module.reinit_ema(
+            )  # NOTE-JK We do this so that the EMA loads the correct weights
+        logging.warning("Successfully loaded model weights...")
     if (args.resume_from_jax_params):
         model_module.load_from_jax(args.resume_from_jax_params)
         logging.info(
@@ -664,12 +668,14 @@ def main(args):
         logging.info(f"Successfully set lr step to {args.set_lr_step}...")
 
     # Load angle transformer checkpoint, if provided
-    if args.angle_transformer_checkpoint is not None:
+    if args.angle_transformer_checkpoint is not None and args.use_angle_transformer:
         sd = torch.load(args.angle_transformer_checkpoint)['state_dict']
         # sd = {k.replace("at.", "model.structure_module.angle_resnet."): v for k, v in sd.items()}
         sd = {k.replace("at.", ""): v for k, v in sd.items()}
         model_module.model.structure_module.angle_resnet.load_state_dict(sd, strict=True)
-        logging.info("Successfully loaded angle transformer weights...")
+        logging.warning("Successfully loaded angle transformer weights...")
+        model_module.reinit_ema(
+            )  # NOTE-JK We do this so that the EMA loads the correct weights
 
     # TorchScript components of the model
     if (args.script_modules):
@@ -685,6 +691,7 @@ def main(args):
 
     loggers = []
     wdb_logger = None
+    # from pytorch_lightning.utilities import rank_zero_only
     if (args.wandb):
         wdb_logger = WandbLogger(
             name=args.experiment_name,
@@ -699,7 +706,9 @@ def main(args):
             **{"entity": args.wandb_entity},
         )
         # MOD-JK: save config to wandb, log gradients/params
-        wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
+        # if rank_zero_only.rank == 0:
+        # wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
+
         loggers.append(wdb_logger)
         print("Experiment dir:", wdb_logger.experiment.dir)
 
@@ -716,6 +725,8 @@ def main(args):
         callbacks.append(mc)
     elif (args.checkpoint_every_epoch):
         print("Checkpointing every epoch.")
+        model_dirpath = os.path.join(args.output_dir, "checkpoints")
+        os.makedirs(model_dirpath, exist_ok=True)
         mc = ModelCheckpoint(
             every_n_epochs=1,
             auto_insert_metric_name=False,
@@ -723,6 +734,7 @@ def main(args):
             monitor="val/lddt_aa",
             verbose=True,
             mode="max",
+            dirpath=model_dirpath
         )
         mc_last = ModelCheckpoint(
             every_n_epochs=1,
@@ -731,6 +743,7 @@ def main(args):
             monitor="train/step_monitor",
             verbose=True,
             mode="max",
+            dirpath=model_dirpath
         )
         best_openmm = ModelCheckpoint(every_n_epochs=1,
                                       auto_insert_metric_name=False,
@@ -738,7 +751,8 @@ def main(args):
                                       monitor="val/openmm_unscaled",
                                       verbose=True,
                                       mode="min",
-                                      filename="{epoch}-{step}-bestopenmm")
+                                      filename="{epoch}-{step}-bestopenmm",
+                                      dirpath=model_dirpath)
         callbacks.extend([mc, mc_last, best_openmm])
 
     if (args.early_stopping):
@@ -1521,7 +1535,7 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
 
     # Disable the initial validation pass
-    parser.set_defaults(num_sanity_val_steps=0, )
+    # parser.set_defaults(num_sanity_val_steps=0, )
 
     # Remove some buggy/redundant arguments introduced by the Trainer
     remove_arguments(
@@ -1555,12 +1569,12 @@ if __name__ == "__main__":
     if args.debug:
         # Set logging level to debug
         root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
+        root.setLevel(logging.WARNING)
         handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.DEBUG)
+        handler.setLevel(logging.WARNING)
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
-        root.addHandler(handler)
+        # root.addHandler(handler)
 
     main(args)
