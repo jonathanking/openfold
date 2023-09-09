@@ -19,7 +19,7 @@
 ##       Description      ##
 ############################
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM"
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM-1gpu"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
