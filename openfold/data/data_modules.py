@@ -249,7 +249,7 @@ class OpenFoldSingleDataset(torch.utils.data.Dataset):
         if self.overfit_single_batch:
             idx = 1
         name = self.idx_to_chain_id(idx)  # NOTE-JK: this is according to the names found in the alignment_dir
-        print(name)
+        # print(name)
         alignment_dir = os.path.join(self.alignment_dir, name)
 
         alignment_index = None

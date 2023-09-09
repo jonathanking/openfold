@@ -14,6 +14,7 @@
 # limitations under the License.
 from functools import reduce
 import importlib
+import logging
 import math
 import sys
 from operator import mul
@@ -621,6 +622,7 @@ class StructureModule(nn.Module):
         self.bb_update = BackboneUpdate(self.c_s)
 
         if kwargs['use_angle_transformer']:
+            logging.warning("Using AngleTransformer.")
             self.angle_resnet = AngleTransformer(
                 self.c_s,
                 self.c_resnet,
