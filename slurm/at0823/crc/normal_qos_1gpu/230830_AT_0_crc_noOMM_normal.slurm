@@ -86,7 +86,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
     --wandb_entity=koes-group \
     --precision=bf16 \
     --resume_model_weights_only=True \
-    --train_epoch_len=9000 \
+    --train_epoch_len=4500 \
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
