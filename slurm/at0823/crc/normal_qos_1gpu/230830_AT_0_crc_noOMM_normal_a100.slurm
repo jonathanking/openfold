@@ -5,7 +5,7 @@
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=42
+#SBATCH --ntasks-per-node=16
 #SBATCH --partition=a100
 #SBATCH --cluster=gpu
 #SBATCH --time=3-00:00:00
