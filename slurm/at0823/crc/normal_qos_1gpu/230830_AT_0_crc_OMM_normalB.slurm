@@ -54,7 +54,7 @@ VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 # CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
 AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/at-epoch=41.ckpt"
 PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-scnmin-00-AT-OMM-1gpu"
-CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
+CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
 
 if [[ "$CHECKPOINT" == *"initial_training.pt"* ]] || [[ "$CHECKPOINT" == *"finetuning_"* ]]; then
