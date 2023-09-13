@@ -19,7 +19,7 @@
 ##       Description      ##
 ############################
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM"
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM-1gpu"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM-1gpub"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
@@ -128,7 +128,6 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
     --chi_weight=0.05 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
-    --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True
 
 

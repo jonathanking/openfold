@@ -111,7 +111,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
-    --run_validate_first=False \
+    --run_validate_first=True \
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
@@ -126,7 +126,6 @@ export CUDA_LAUNCH_BLOCKING=1
     --chi_weight=0.05 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
-    --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True
 
 

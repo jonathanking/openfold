@@ -655,7 +655,7 @@ def main(args):
             logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
         model_module.load_state_dict(sd, strict=False)
-        if not args.use_angle_transformer:
+        if not args.use_angle_transformer or (args.use_angle_transformer and args.angle_transformer_checkpoint is not None):
             model_module.reinit_ema(
             )  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.warning("Successfully loaded model weights...")
