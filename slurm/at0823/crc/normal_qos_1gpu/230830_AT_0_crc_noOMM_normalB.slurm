@@ -10,8 +10,7 @@
 #SBATCH --cluster=gpu
 #SBATCH --time=3-00:00:00
 #SBATCH --qos=normal
-#SBATCH --constraint=80g
-#SBATCH --exclude=gpu-n31
+#SBATCH --exclude=gpu-n31,gpu-n32
 
 
 
