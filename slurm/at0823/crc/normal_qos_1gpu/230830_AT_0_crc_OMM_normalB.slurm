@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=AT-OMMb
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:1
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
-#SBATCH --ntasks-per-node=42
+#SBATCH --ntasks-per-node=12
 #SBATCH --partition=a100_nvlink
 #SBATCH --cluster=gpu
 #SBATCH --time=3-00:00:00
@@ -18,7 +18,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMMb"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-1gpub"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -52,8 +52,8 @@ VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
 # CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
-AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/at-epoch=12.ckpt"
-PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-scnmin-00-AT-OMM"
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/at-epoch=41.ckpt"
+PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-scnmin-00-AT-OMM-1gpu"
 CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
 
@@ -75,9 +75,9 @@ export CUDA_LAUNCH_BLOCKING=1
     --resume_from_ckpt=${CHECKPOINT} \
     --deepspeed_config_path=deepspeed_config_jk03.json \
     --replace_sampler_ddp=True \
-    --gpus=4 \
+    --gpus=1 \
     --batch_size=1 \
-    --accumulate_grad_batches=32 \
+    --accumulate_grad_batches=8 \
     --checkpoint_every_epoch \
     --wandb \
     --wandb_project=finetune-openfold-02 \
