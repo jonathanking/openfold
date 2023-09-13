@@ -11,6 +11,7 @@
 #SBATCH --time=3-00:00:00
 #SBATCH --qos=normal
 #SBATCH --exclude=gpu-n31,gpu-n32
+#SBATCH --constraint=80g
 
 
 
