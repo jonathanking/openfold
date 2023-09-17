@@ -81,7 +81,7 @@ class AngleResnet(nn.Module):
     Implements Algorithm 20, lines 11-14
     """
 
-    def __init__(self, c_in, c_hidden, no_blocks, no_angles, epsilon):
+    def __init__(self, c_in, c_hidden, no_blocks, no_angles, epsilon, conv_encoder=False):
         """
         Args:
             c_in:
@@ -111,9 +111,38 @@ class AngleResnet(nn.Module):
             layer = AngleResnetBlock(c_hidden=self.c_hidden)
             self.layers.append(layer)
 
+        if conv_encoder:
+            self._setup_conv_encoder()
+
         self.linear_out = Linear(self.c_hidden, self.no_angles * 2)
 
         self.relu = nn.ReLU()
+
+    def _setup_conv_encoder(self):
+        # Create a 1D convolutional encoder to process the sequence, kernel size 11, that
+        # preserves length and dimensionality
+        self.conv_initial = nn.Conv1d(
+            in_channels=self.c_hidden,
+            out_channels=self.c_hidden,
+            kernel_size=11,
+            stride=1,
+            padding=5,
+            dilation=1,
+            groups=1,
+            bias=True,
+        )
+        self.relu2 = nn.ReLU()
+        self.conv_current = nn.Conv1d(
+            in_channels=self.c_hidden,
+            out_channels=self.c_hidden,
+            kernel_size=11,
+            stride=1,
+            padding=5,
+            dilation=1,
+            groups=1,
+            bias=True,
+        )
+        self.relu3 = nn.ReLU()
 
     def forward(
         self, s: torch.Tensor, s_initial: torch.Tensor
@@ -137,6 +166,20 @@ class AngleResnet(nn.Module):
         s_initial = self.linear_initial(s_initial)
         s = self.relu(s)
         s = self.linear_in(s)
+
+        # Perform a 1D convolutional encoding of the sequence if requested
+        if hasattr(self, "conv_initial"):
+            # Conv for s_initial
+            s_initial = s_initial.transpose(-1, -2)
+            s_initial = self.conv_initial(s_initial)
+            s_initial = s_initial.transpose(-1, -2)
+            s_initial = self.relu2(s_initial)
+            # Conv for s
+            s = s.transpose(-1, -2)
+            s = self.conv_current(s)
+            s = s.transpose(-1, -2)
+            s = self.relu3(s)
+
         s = s + s_initial
 
         for l in self.layers:
@@ -632,7 +675,9 @@ class StructureModule(nn.Module):
                 dropout=kwargs['angle_transformer_dropout'],
                 d_ff=kwargs['angle_transformer_dff'],
                 no_heads=kwargs['angle_transformer_heads'],
-                activation=kwargs['angle_transformer_activation']
+                activation=kwargs['angle_transformer_activation'],
+                conv_encoder=kwargs['angle_transformer_conv_encoder'],
+
             )
         else:
             self.angle_resnet = AngleResnet(
