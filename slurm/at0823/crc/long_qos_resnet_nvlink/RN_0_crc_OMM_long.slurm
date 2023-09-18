@@ -129,7 +129,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --angle_like_loss_only=True \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True \
-    --angle_transformer_conv_encoder=True \
+    --angle_transformer_conv_encoder=False \
 
 
     
