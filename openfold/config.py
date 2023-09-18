@@ -577,6 +577,7 @@ config = mlc.ConfigDict(
                 "epsilon": eps,  # 1e-12,
                 "inf": 1e5,
                 "use_angle_transformer": False,
+                "angle_transformer_conv_encoder": False,
                 "angle_transformer_dropout": 0.1,
                 "angle_transformer_dff": 2048,
                 "angle_transformer_heads": 4,
