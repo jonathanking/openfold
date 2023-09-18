@@ -1,23 +1,23 @@
 #!/bin/bash
-#SBATCH --job-name=AT-OMM
+#SBATCH --job-name=RN-OMM-long-nvl-40g-non323941
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=18
-#SBATCH --partition=a100
+#SBATCH --partition=a100_nvlink
 #SBATCH --cluster=gpu
-#SBATCH --time=3-00:00:00
+#SBATCH --time=6-00:00:00
 #SBATCH --qos=long
-#SBATCH --exclude=gpu-n31
+#SBATCH --exclude=gpu-n32,gpu-n29,gpu-n41
 
 
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM"
+EXPERIMENT_ID="angletransformer-scnmin-00-RN-OMM-toasty-long-a100"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -52,7 +52,7 @@ VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
 CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
-AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/at-epoch=41.ckpt"
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/best_resnet.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
 # CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
@@ -106,8 +106,8 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="0831_AT" \
-    --wandb_note="Trying to finetune the AT with hthe whole AF2." \
+    --wandb_tags="0913_AT,0913_RN" \
+    --wandb_note="Trying to finetune the AT with the whole AF2." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
     --openmm_modified_sigmoid=5,1000000,300000,5 \
@@ -115,19 +115,21 @@ export CUDA_LAUNCH_BLOCKING=1
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
-    --use_angle_transformer=True \
+    --use_angle_transformer=False \
+    --force_load_angle_transformer_weights=True \
     --train_only_angle_predictor=True \
-    --angle_transformer_layers=4 \
-    --angle_transformer_heads=2 \
-    --angle_transformer_hidden=2048 \
-    --angle_transformer_dff=256 \
-    --angle_transformer_dropout=0.15 \
+    --angle_transformer_layers=42 \
+    --angle_transformer_heads=1 \
+    --angle_transformer_hidden=64 \
+    --angle_transformer_dff=1024 \
+    --angle_transformer_dropout=0.018609913167811645 \
     --angle_transformer_activation=gelu \
-    --chi_weight=0.05 \
+    --chi_weight=13.012551860064766 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
-    --add_relu_to_omm_loss=True
+    --add_relu_to_omm_loss=True \
+    --angle_transformer_conv_encoder=True \
 
 
     
