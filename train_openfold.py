@@ -231,65 +231,59 @@ class OpenFoldWrapper(pl.LightningModule):
             f.write("\n")
 
     def training_step(self, batch, batch_idx):
-        try:
-            self.loss.mode = 'train'
-            if not self.automatic_optimization:
-                opt = self.optimizers()
-                opt.zero_grad()
+        self.loss.mode = 'train'
+        if not self.automatic_optimization:
+            opt = self.optimizers()
+            opt.zero_grad()
 
-            if batch['all_atom_positions'].sum() == 0:
-                # TODO-JK: What happened here?
-                print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
-                return torch.tensor(0., requires_grad=True, device=self.device)
-
-            if (self.ema.device != batch["aatype"].device):
-                self.ema.to(batch["aatype"].device)
-
-            # Run the model, catching CUDA OOM RuntimeError
-            if not self.config.model.disable_backwards:
-                outputs = self(batch)
-            else:
-                with torch.no_grad():
-                    outputs = self(batch)
-
-            # Remove the recycling dimension
-            batch = tensor_tree_map(lambda t: t[..., -1], batch)
-
-            if outputs['final_atom_positions'].sum() == 0:
-                # TODO-JK: What happened here?
-                print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
-                return torch.tensor(0., requires_grad=True, device=self.device)
-
-            # Compute loss
-            if not self.config.model.disable_backwards:
-                loss, loss_breakdown = self.loss(outputs, batch, _return_breakdown=True)
-            else:
-                with torch.no_grad():
-                    loss, loss_breakdown = self.loss(outputs,
-                                                     batch,
-                                                     _return_breakdown=True)
-
-            # Log it
-            self._log(loss_breakdown, batch, outputs)
-
-            # Backprop
-            if not self.config.model.disable_backwards and not self.automatic_optimization:
-                self.manual_backward(loss)
-                if self.config.model.grad_clip_val != 0:
-                    torch.nn.utils.clip_grad_value_(self.model.parameters(),
-                                                    self.config.model.grad_clip_val)
-                opt.step()
-                self.lr_schedulers().step()
-
-            if self.openmm_scheduler is not None:
-                self.openmm_scheduler.step(self.global_step)
-
-            return loss
-        except RuntimeError as re:
-            print(re)
-            gc.collect()
-            torch.torch.cuda.empty_cache()
+        if batch['all_atom_positions'].sum() == 0:
+            # TODO-JK: What happened here?
+            print(f"Protein {batch['name']} has all 0 gt-atoms. Skipping.")
             return torch.tensor(0., requires_grad=True, device=self.device)
+
+        if (self.ema.device != batch["aatype"].device):
+            self.ema.to(batch["aatype"].device)
+
+        # Run the model, catching CUDA OOM RuntimeError
+        if not self.config.model.disable_backwards:
+            outputs = self(batch)
+        else:
+            with torch.no_grad():
+                outputs = self(batch)
+
+        # Remove the recycling dimension
+        batch = tensor_tree_map(lambda t: t[..., -1], batch)
+
+        if outputs['final_atom_positions'].sum() == 0:
+            # TODO-JK: What happened here?
+            print(f"Protein {batch['name']} has all 0 pred atoms. Skipping.")
+            return torch.tensor(0., requires_grad=True, device=self.device)
+
+        # Compute loss
+        if not self.config.model.disable_backwards:
+            loss, loss_breakdown = self.loss(outputs, batch, _return_breakdown=True)
+        else:
+            with torch.no_grad():
+                loss, loss_breakdown = self.loss(outputs,
+                                                batch,
+                                                _return_breakdown=True)
+
+        # Log it
+        self._log(loss_breakdown, batch, outputs)
+
+        # Backprop
+        if not self.config.model.disable_backwards and not self.automatic_optimization:
+            self.manual_backward(loss)
+            if self.config.model.grad_clip_val != 0:
+                torch.nn.utils.clip_grad_value_(self.model.parameters(),
+                                                self.config.model.grad_clip_val)
+            opt.step()
+            self.lr_schedulers().step()
+
+        if self.openmm_scheduler is not None:
+            self.openmm_scheduler.step(self.global_step)
+
+        return loss
 
     def on_before_zero_grad(self, *args, **kwargs):
         self.ema.update(self.model)
