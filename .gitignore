@@ -29,3 +29,5 @@ jk_research/angletransformer/train.py
 checkpoints/at-epoch=00-val/loss=0.39.ckpt
 lightning_logs/
 train_openfold.py.bkup
+tunnel.log
+wandb/debug-cli.jok120.log
