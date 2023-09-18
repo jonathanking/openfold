@@ -143,18 +143,42 @@ class OpenFoldWrapper(pl.LightningModule):
         else:
             phase = "val"
         for loss_name, indiv_loss in loss_breakdown.items():
-            if ((torch.is_tensor(indiv_loss) and torch.isnan(indiv_loss)) or
-                (not torch.is_tensor(indiv_loss) and np.isnan(indiv_loss))) and loss_name != "loss":
-                continue
-            self.log(
-                f"{phase}/{loss_name}",
-                indiv_loss,
-                on_step=train,
-                on_epoch=(not train),
-                logger=True,
-            )
+            
+            if not train:
+                self.log(
+                    f"{phase}/{loss_name}_step",
+                    indiv_loss,
+                    on_step=True,
+                    on_epoch=False,
+                    logger=True,
+                )
+                if loss_name == "angle_mae":
+                    self.log(
+                        f"{phase}/{loss_name}",
+                        indiv_loss,
+                        on_step=False,
+                        on_epoch=True,
+                        logger=True,
+                        sync_dist=True
+                    )
+                else:
+                    self.log(
+                        f"{phase}/{loss_name}",
+                        indiv_loss,
+                        on_step=False,
+                        on_epoch=True,
+                        logger=True,
+                        sync_dist=False
+                    )
 
             if (train):
+                self.log(
+                    f"{phase}/{loss_name}_step",
+                    indiv_loss,
+                    on_step=True,
+                    on_epoch=False,
+                    logger=True,
+                )
                 self.log(
                     f"{phase}/{loss_name}_epoch",
                     indiv_loss,
@@ -1569,9 +1593,9 @@ if __name__ == "__main__":
     if args.debug:
         # Set logging level to debug
         root = logging.getLogger()
-        root.setLevel(logging.WARNING)
+        root.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.WARNING)
+        handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
