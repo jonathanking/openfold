@@ -566,6 +566,7 @@ def update_openmm_config(config, args):
     config.model.structure_module.angle_transformer_dff = args.angle_transformer_dff
     config.model.structure_module.angle_transformer_heads = args.angle_transformer_heads
     config.model.structure_module.angle_transformer_layers = args.angle_transformer_layers
+    config.model.structure_module.angle_transformer_conv_encoder = args.angle_transformer_conv_encoder
     
     if args.use_angle_transformer:
         config.model.structure_module.c_resnet = args.angle_transformer_hidden
@@ -669,7 +670,7 @@ def main(args):
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
         # If we're loading weights for the angle transformer, don't load those now.
-        if args.angle_transformer_checkpoint is not None and args.use_angle_transformer:
+        if args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights):
             logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
         model_module.load_state_dict(sd, strict=False)
@@ -686,8 +687,9 @@ def main(args):
         logging.info(f"Successfully set lr step to {args.set_lr_step}...")
 
     # Load angle transformer checkpoint, if provided
-    if args.angle_transformer_checkpoint is not None and args.use_angle_transformer:
-        sd = torch.load(args.angle_transformer_checkpoint)['state_dict']
+    if args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights):
+        sd = torch.load(args.angle_transformer_checkpoint, map_location='cpu')['state_dict']
+        # sd = torch.load(args.angle_transformer_checkpoint)['state_dict']
         # sd = {k.replace("at.", "model.structure_module.angle_resnet."): v for k, v in sd.items()}
         sd = {k.replace("at.", ""): v for k, v in sd.items()}
         model_module.model.structure_module.angle_resnet.load_state_dict(sd, strict=True)
@@ -1549,6 +1551,15 @@ if __name__ == "__main__":
                         type=str,
                         default=None,
                         help="Path to checkpoint for angle transformer.")
+    parser.add_argument("--angle_transformer_conv_encoder",
+                        type=bool_type,
+                        default=False,
+                        help="Whether or not to add a convolutional encoder to the angle "
+                        "transformer.")
+    parser.add_argument("--force_load_angle_transformer_weights",
+                        type=bool_type,
+                        default=False,
+                        help="Whether or not to force load angle transformer weights.") 
 
     parser = pl.Trainer.add_argparse_args(parser)
 
@@ -1594,5 +1605,12 @@ if __name__ == "__main__":
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         # root.addHandler(handler)
+
+    # Check if force_load_angle_transformer_weights is set, then make sure angle_transformer_checkpoint exists
+    if args.force_load_angle_transformer_weights:
+        # Check if angle_transformer_checkpoint file exists
+        if not os.path.exists(args.angle_transformer_checkpoint):
+            raise ValueError("angle_transformer_checkpoint does not exist.")
+
 
     main(args)
