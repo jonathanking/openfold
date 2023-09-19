@@ -680,12 +680,14 @@ class StructureModule(nn.Module):
 
             )
         else:
+            logging.warning(f"Initializing AngleResnet with {self.c_s}, {self.c_resnet}, {self.no_resnet_blocks}, {self.no_angles}, {self.epsilon}, {kwargs['angle_transformer_conv_encoder']}.")
             self.angle_resnet = AngleResnet(
                 self.c_s,
                 self.c_resnet,
                 self.no_resnet_blocks,
                 self.no_angles,
                 self.epsilon,
+                conv_encoder=kwargs['angle_transformer_conv_encoder'],
             )
 
         # MOD-JK: If requested, finetune the angle predictor only
