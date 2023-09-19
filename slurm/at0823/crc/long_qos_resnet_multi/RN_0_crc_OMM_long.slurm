@@ -6,7 +6,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=18
-#SBATCH --partition=a100_nvlink
+#SBATCH --partition=a100_multi
+#SBATCH --nodes=2
 #SBATCH --cluster=gpu
 #SBATCH --time=6-00:00:00
 #SBATCH --qos=long

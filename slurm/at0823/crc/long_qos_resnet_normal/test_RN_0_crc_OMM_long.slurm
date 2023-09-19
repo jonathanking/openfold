@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=RN-OMM-long-nvl-40g-non323941
+#SBATCH --job-name=RN-OMM-long-40g-non323941-TEST
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
@@ -8,16 +8,16 @@
 #SBATCH --ntasks-per-node=18
 #SBATCH --partition=a100_nvlink
 #SBATCH --cluster=gpu
-#SBATCH --time=6-00:00:00
-#SBATCH --qos=long
-#SBATCH --exclude=gpu-n28,gpu-n32,gpu-n29,gpu-n41
+#SBATCH --time=0-01:00:00
+#SBATCH --qos=short
+#SBATCH --exclude=gpu-n32,gpu-n29,gpu-n41,gpu-n28
 
 
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-RN-OMM-toasty-long-a100"
+EXPERIMENT_ID="angletransformer-scnmin-00-RN-OMM-toasty-long-a100only"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -129,7 +129,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --angle_like_loss_only=True \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True \
-    --angle_transformer_conv_encoder=True \
+    --angle_transformer_conv_encoder=False \
 
 
     
