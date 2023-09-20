@@ -582,7 +582,7 @@ def update_openmm_config(config, args):
     if args.angle_like_loss_only:
         for loss_key in [
                 'distogram', 'experimentally_resolved', 'plddt_loss', 'masked_msa', 'tm',
-                'openmm'
+                # 'openmm'
         ]:
             config.loss[loss_key].weight = 0.
 
@@ -1366,7 +1366,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--clear_cache_between_blocks",
         type=bool_type,
-        default=False,
+        default=True,
         help="Whether to clear the cache between blocks in extra_msa_stack")
     parser.add_argument(
         "--openmm_squashed_loss",
