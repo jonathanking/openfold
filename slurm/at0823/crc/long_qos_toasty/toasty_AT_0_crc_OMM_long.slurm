@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=AT-OMM-toasty-long-40g-non323941
+#SBATCH --job-name=AT-OMM-toasty-normal-40g-non323941
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
@@ -8,8 +8,8 @@
 #SBATCH --ntasks-per-node=18
 #SBATCH --partition=a100
 #SBATCH --cluster=gpu
-#SBATCH --time=6-00:00:00
-#SBATCH --qos=long
+#SBATCH --time=3-00:00:00
+#SBATCH --qos=normal
 #SBATCH --exclude=gpu-n32,gpu-n29,gpu-n41
 
 
