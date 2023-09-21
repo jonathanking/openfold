@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=AT-OMM-toasty-normal-40g-non323941
+#SBATCH --job-name=AT-OMM-toasty-normal-40g-non323941-whole
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-chw0.5-omm0.1"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -88,7 +88,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
-    --openmm_weight=0.1 \
+    --openmm_weight=0.01 \
     --openmm_activation=None \
     --seed=1 \
     --debug \
@@ -116,7 +116,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
     --use_angle_transformer=True \
-    --train_only_angle_predictor=True \
+    --train_only_angle_predictor=False \
     --angle_transformer_layers=42 \
     --angle_transformer_heads=1 \
     --angle_transformer_hidden=64 \
