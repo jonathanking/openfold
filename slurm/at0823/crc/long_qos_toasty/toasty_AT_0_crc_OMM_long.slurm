@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-chw0.5-omm0.1"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -88,7 +88,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --max_epochs=500 \
     --debug \
     --add_struct_metrics \
-    --openmm_weight=0.01 \
+    --openmm_weight=0.1 \
     --openmm_activation=None \
     --seed=1 \
     --debug \
@@ -123,7 +123,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --angle_transformer_dff=1024 \
     --angle_transformer_dropout=0.018609913167811645 \
     --angle_transformer_activation=gelu \
-    --chi_weight=13.012551860064766 \
+    --chi_weight=1 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
