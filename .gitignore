@@ -31,3 +31,4 @@ lightning_logs/
 train_openfold.py.bkup
 tunnel.log
 wandb/debug-cli.jok120.log
+wandb/debug-cli.jok120.log
