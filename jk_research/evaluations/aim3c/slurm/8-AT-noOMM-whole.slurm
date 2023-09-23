@@ -13,7 +13,7 @@
 ###########################
 ## UPDATE ME!! UPDATE ME!##
 ###########################
-NAME="angletransformer-scnmin-00-AT-noOMM-toasty"
+NAME="angletransformer-scnmin-00-AT-noOMM-toasty-long-a100-wholemodel"
 EXPERIMENT_ID="eval_${NAME}"
 # AT_CHECKPOINT=""
 AT_LAYERS=42
@@ -131,7 +131,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
     --use_angle_transformer=${USE_AT} \
-    --train_only_angle_predictor=True \
+    --train_only_angle_predictor=False \
     --angle_transformer_layers=${AT_LAYERS} \
     --angle_transformer_heads=${AT_HEADS} \
     --angle_transformer_hidden=${AT_HIDDEN} \
