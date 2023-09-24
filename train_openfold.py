@@ -115,6 +115,7 @@ class OpenFoldWrapper(pl.LightningModule):
         self.automatic_optimization = not self.config.model.disable_backwards
         self.csv_path = csv_path
         self._test = False
+        self._did_reinit_ema = False
 
     def reinit_ema(self):
         """Reinitialize EMA model weights using the current model weights.
@@ -125,6 +126,7 @@ class OpenFoldWrapper(pl.LightningModule):
         random/meaningless ema weights. This is especially relevant when validation_step
         gets called before the start of training, but the model has weights loaded.
         """
+        self._did_reinit_ema = True
         self.ema = ExponentialMovingAverage(model=self.model, decay=self.config.ema.decay)
 
     def forward(self, batch):
@@ -696,6 +698,9 @@ def main(args):
         logging.warning("Successfully loaded angle transformer weights...")
         model_module.reinit_ema(
             )  # NOTE-JK We do this so that the EMA loads the correct weights
+    if not model_module._did_reinit_ema:
+        model_module.reinit_ema()
+        logging.warning("Manually reinitialized EMA...")
 
     # TorchScript components of the model
     if (args.script_modules):
