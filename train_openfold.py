@@ -672,7 +672,7 @@ def main(args):
         # sd = {k[len("module."):]:v for k,v in sd.items()}
         sd = {"model." + k: v for k, v in sd.items()}
         # If we're loading weights for the angle transformer, don't load those now.
-        if args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights):
+        if args.force_skip_angle_transformer_weights or (args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights)):
             logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
         model_module.load_state_dict(sd, strict=False)
@@ -1565,6 +1565,10 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether or not to force load angle transformer weights.") 
+    parser.add_argument("--force_skip_angle_transformer_weights",
+                        type=bool_type,
+                        default=False,
+                        help="Whether or not to force load angle transformer weights.") 
 
     parser = pl.Trainer.add_argparse_args(parser)
 
@@ -1593,6 +1597,9 @@ if __name__ == "__main__":
     if (args.resume_from_jax_params is not None and args.resume_from_ckpt is not None):
         raise ValueError(
             "Choose between loading pretrained Jax-weights and a checkpoint-path")
+
+    if (args.force_load_angle_transformer_weights  and  args.force_skip_angle_transformer_weights) :
+        raise ValueError("Choose between loading or skipping AT weights.")
 
     # This re-applies the training-time filters at the beginning of every epoch
     args.reload_dataloaders_every_n_epochs = 1
