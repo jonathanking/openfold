@@ -574,6 +574,8 @@ def update_openmm_config(config, args):
         config.model.structure_module.c_resnet = args.angle_transformer_hidden
     config.model.structure_module.angle_transformer_activation = args.angle_transformer_activation
     config.loss.supervised_chi.chi_weight = args.chi_weight  # Fix
+    logging.warning("Using 1 for chi weight")
+    config.loss.supervised_chi.chi_weight = 1
 
     if args.angle_loss_only:
         for loss_key in [
@@ -675,8 +677,21 @@ def main(args):
         if args.force_skip_angle_transformer_weights or (args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights)):
             logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
-        model_module.load_state_dict(sd, strict=False)
-        if not args.use_angle_transformer or (args.use_angle_transformer and args.angle_transformer_checkpoint is not None):
+        if args.use_angle_transformer and args.angle_transformer_checkpoint is None or args.frankenstein_model_loading:
+            sd = {k.replace("model.module.", ""): v for k, v in sd.items()}
+            logging.warning("Doing the ol' switcheroo to the state-dict to get the saved weights to load correctly when an AngleTransformer is saved in the checkpoint...")
+        # print(list(sd.keys()))
+        wait_for_AT = (not args.use_angle_transformer or (args.use_angle_transformer and args.angle_transformer_checkpoint is not None) 
+            or (args.use_angle_transformer and "pytorch_model.bin" in args.resume_from_ckpt) or args.frankenstein_model_loading)
+        logging.warning("Attempting to load primary model weights...")
+        if args.frankenstein_model_loading:
+            # Make sure to skip AT weights:
+            sd = {k:v for k,v in sd.items() if "angle_resnet" not in k}
+        missing_keys, unexp_keys = model_module.load_state_dict(sd, strict=not wait_for_AT)
+        print("Missing primary model keys:", missing_keys)
+        print("Unexpected primary model keys:", unexp_keys)
+        if wait_for_AT:
+            logging.warning("Reiniting EMA...")
             model_module.reinit_ema(
             )  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.warning("Successfully loaded model weights...")
@@ -689,7 +704,24 @@ def main(args):
         logging.info(f"Successfully set lr step to {args.set_lr_step}...")
 
     # Load angle transformer checkpoint, if provided
-    if args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights):
+    if args.frankenstein_model_loading:
+        logging.warning("Starting frankenstein model loading...")  # Load AT from full AF2 model
+        sd = get_fp32_state_dict_from_zero_checkpoint(args.angle_transformer_checkpoint)
+        # sd = torch.load(args.angle_transformer_checkpoint, map_location='cpu')['state_dict']
+        for k,v in sd.items():
+            print(k)
+        # Only keep ones with angle_resnet in the name, and delete the prefix 'module.model.structure_module.angle_resnet'
+        sd = {k.replace("module.model.structure_module.angle_resnet.", ""):v for k,v in sd.items() if "angle_resnet" in k}
+        # sd = {k.replace("model.structure_module.angle_resnet", "") :v for k,v in sd.items() if k.startswith("model.structure_module.angle_resnet")} 
+        # sd = {k.replace("model.", "") :v for k,v in sd.items() if k.startswith("model.structure_module.angle_resnet")} 
+        missing_keys, unexp_keys = model_module.model.structure_module.angle_resnet.load_state_dict(sd, strict=False)
+        # missing_keys, unexp_keys = model_module.model.load_state_dict(sd, strict=False)
+        print("Missing keys:", missing_keys)
+        print("Unexpected keys:", unexp_keys)
+        # model_module.model.structure_module.angle_resnet.load_state_dict(sd, strict=True)
+        logging.warning("Successfully loaded frankenstein angle transformer weights...")
+
+    elif args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights):
         sd = torch.load(args.angle_transformer_checkpoint, map_location='cpu')['state_dict']
         # sd = torch.load(args.angle_transformer_checkpoint)['state_dict']
         # sd = {k.replace("at.", "model.structure_module.angle_resnet."): v for k, v in sd.items()}
@@ -1569,6 +1601,10 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether or not to force load angle transformer weights.") 
+    parser.add_argument("--frankenstein_model_loading",
+                        type=bool_type,
+                        default=False,
+                        help="Whether or not to load a Frankenstein model.")
 
     parser = pl.Trainer.add_argparse_args(parser)
 

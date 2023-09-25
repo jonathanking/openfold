@@ -142,8 +142,7 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True \
     --angle_transformer_conv_encoder=${AT_CONV_ENC} \
-    --force_load_angle_transformer_weights=${FORCE_LOAD_AT_WEIGHTS} \
-    --angle_transformer_conv_encoder=True &
+    --force_load_angle_transformer_weights=${FORCE_LOAD_AT_WEIGHTS}  &
 
 ############################
 ##       Description      ##
@@ -264,8 +263,7 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --angle_transformer_conv_encoder=${AT_CONV_ENC} \
     --force_load_angle_transformer_weights=${FORCE_LOAD_AT_WEIGHTS} \
-    --add_relu_to_omm_loss=True \
-    --angle_transformer_conv_encoder=True &
+    --add_relu_to_omm_loss=True  &
 
 wait
 
