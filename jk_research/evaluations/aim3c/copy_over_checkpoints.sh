@@ -4,7 +4,7 @@
 
 aim3names=(
     # 0. AT OMM
-    "angletransformer-scnmin-00-AT-OMM-toasty-long-a100"                
+    "angletransformer-scnmin-00-AT-OMM-toasty-long-a100-RESUME"                
     # 1. AT noOMM
     "angletransformer-scnmin-00-AT-noOMM-toasty"                             
     # 2. RN OMM
@@ -14,11 +14,11 @@ aim3names=(
     # 4. AT OMM chw0.5 omm0.1
     "angletransformer-scnmin-00-AT-OMM-toasty-long-a100-chw0.5-omm0.1"  
     # 5. AT OMM wholemodel
-    "angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel"     
+    # "angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel"     
     # 6. RN OMM wholemodel
-    "angletransformer-scnmin-00-RN-OMM-toasty-long-a100-wholemodel"     
+    # "angletransformer-scnmin-00-RN-OMM-toasty-long-a100-wholemodel"     
     # 7. RN noOMM wholemodel
-    "angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel"   
+    # "angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel"   
     # Needs angletransformer-scnmin-00-AT-noOMM-toasty-long-a100-wholemodel
     # 8. AT noOMM wholemodel
     # "angletransformer-scnmin-00-AT-noOMM-toasty-long-a100-wholemodel"

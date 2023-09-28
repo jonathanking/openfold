@@ -13,7 +13,7 @@
 ###########################
 ## UPDATE ME!! UPDATE ME!##
 ###########################
-NAME="angletransformer-scnmin-00-AT-OMM-toasty-long-a100"
+NAME="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-RESUME"
 EXPERIMENT_ID="eval_${NAME}"
 # AT_CHECKPOINT=""
 AT_LAYERS=42

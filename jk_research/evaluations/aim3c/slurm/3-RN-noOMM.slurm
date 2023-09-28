@@ -22,7 +22,7 @@ AT_HIDDEN=64
 AT_DFF=1024
 AT_DROPOUT=0.018609913167811645
 AT_ACTIVATION=gelu
-AT_CONV_ENC=True
+AT_CONV_ENC=False
 USE_AT=False
 AIM_TAG="aim3C"
 
@@ -147,6 +147,7 @@ export CUDA_LAUNCH_BLOCKING=1
     --trainer_mode=validate-val-test \
     --test_data_dir=data/test/cameo/20230103/minimized/data_dir \
     --test_alignment_dir=data/test/cameo/20230103/minimized/alignments \
+    --force_module_model_parameter_switch=True
     # --angle_transformer_checkpoint=${AT_CHECKPOINT} \
 
 
