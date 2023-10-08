@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=RESUME-RN-noOMM-whole-normal-nv
+#SBATCH --job-name=Res2-AT-OMM-toasty-long-40g-non323941
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jok120@pitt.edu
 #SBATCH --ntasks-per-node=18
-#SBATCH --partition=a100_nvlink
+#SBATCH --partition=a100
 #SBATCH --cluster=gpu
 #SBATCH --time=3-00:00:00
 #SBATCH --qos=normal
@@ -17,7 +17,7 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel-RESUME2"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-RESUME2"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -51,9 +51,8 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel-RESUME/checkpoints/82-5145.ckpt
-# AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toasty_sweep_113.ckpt"
-AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/best_resnet.ckpt"
+CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-AT-OMM-toasty-long-a100-RESUME/checkpoints/265-16491.ckpt
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toasty_sweep_113.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
 # CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
@@ -65,7 +64,6 @@ else
 fi
 
 export CUDA_LAUNCH_BLOCKING=1
-RESUME_MODEL_WEIGHTS_ONLY=False
 
 
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
@@ -85,7 +83,7 @@ RESUME_MODEL_WEIGHTS_ONLY=False
     --wandb_project=finetune-openfold-02 \
     --wandb_entity=koes-group \
     --precision=bf16 \
-    --resume_model_weights_only=True \
+    --resume_model_weights_only=False \
     --train_epoch_len=1000 \
     --max_epochs=500 \
     --debug \
@@ -105,10 +103,10 @@ RESUME_MODEL_WEIGHTS_ONLY=False
     --scheduler_max_lr=2e-5 \
     --use_scn_pdb_names=True \
     --use_scn_pdb_names_val=True \
-    --use_openmm=False \
+    --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="0913_AT,0913_RN" \
+    --wandb_tags="0913_AT" \
     --wandb_note="Trying to finetune the AT with the whole AF2." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
@@ -117,9 +115,8 @@ RESUME_MODEL_WEIGHTS_ONLY=False
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
-    --use_angle_transformer=False \
-    --force_load_angle_transformer_weights=False \
-    --train_only_angle_predictor=False \
+    --use_angle_transformer=True \
+    --train_only_angle_predictor=True \
     --angle_transformer_layers=42 \
     --angle_transformer_heads=1 \
     --angle_transformer_hidden=64 \
@@ -130,8 +127,8 @@ RESUME_MODEL_WEIGHTS_ONLY=False
     --angle_loss_only=False \
     --angle_like_loss_only=True \
     --add_relu_to_omm_loss=True \
-    --angle_transformer_conv_encoder=False \
-    --skip_module_module_weight_prefix=True
+    --angle_transformer_conv_encoder=True \
+    --force_load_angle_transformer_weights=False
     # --angle_transformer_checkpoint=${AT_CHECKPOINT} \
 
 

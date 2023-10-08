@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=RESUME-RN-noOMM-whole-normal-nv
+#SBATCH --job-name=RESUME-RN-OMM-whole-normal-nv
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
@@ -10,14 +10,14 @@
 #SBATCH --cluster=gpu
 #SBATCH --time=3-00:00:00
 #SBATCH --qos=normal
-#SBATCH --exclude=gpu-n32,gpu-n29,gpu-n41
+#SBATCH --exclude=gpu-n30,gpu-n29,gpu-n41,gpu-n31
 
 
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel-RESUME2"
+EXPERIMENT_ID="angletransformer-scnmin-00-RN-OMM-toasty-long-a100-wholemodel-RESUME2"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
@@ -51,7 +51,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-RN-noOMM-toasty-long-a100-wholemodel-RESUME/checkpoints/82-5145.ckpt
+CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-RN-OMM-toasty-long-a100-wholemodel-RESUME/checkpoints/77-4835.ckpt
 # AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toasty_sweep_113.ckpt"
 AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/best_resnet.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
@@ -65,7 +65,6 @@ else
 fi
 
 export CUDA_LAUNCH_BLOCKING=1
-RESUME_MODEL_WEIGHTS_ONLY=False
 
 
 ./train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
@@ -105,7 +104,7 @@ RESUME_MODEL_WEIGHTS_ONLY=False
     --scheduler_max_lr=2e-5 \
     --use_scn_pdb_names=True \
     --use_scn_pdb_names_val=True \
-    --use_openmm=False \
+    --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
     --wandb_tags="0913_AT,0913_RN" \
