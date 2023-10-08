@@ -676,8 +676,8 @@ def main(args):
         # If we're loading weights for the angle transformer, don't load those now.
         if args.force_skip_angle_transformer_weights or (args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights)):
             logging.warning("Skipping intitial weights of AT...")
-            sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
-        if args.use_angle_transformer and args.angle_transformer_checkpoint is None or args.frankenstein_model_loading:
+            sd = {k:v for k,v in sd.items() if not "angle_resnet" in k} 
+        if args.use_angle_transformer and args.angle_transformer_checkpoint is None or args.frankenstein_model_loading or args.skip_module_module_weight_prefix:
             sd = {k.replace("model.module.", ""): v for k, v in sd.items()}
             logging.warning("Doing the ol' switcheroo to the state-dict to get the saved weights to load correctly when an AngleTransformer is saved in the checkpoint...")
         # print(list(sd.keys()))
@@ -687,9 +687,16 @@ def main(args):
         if args.frankenstein_model_loading:
             # Make sure to skip AT weights:
             sd = {k:v for k,v in sd.items() if "angle_resnet" not in k}
-        missing_keys, unexp_keys = model_module.load_state_dict(sd, strict=not wait_for_AT)
-        print("Missing primary model keys:", missing_keys)
-        print("Unexpected primary model keys:", unexp_keys)
+        
+        missing_keys, unexp_keys = model_module.load_state_dict(sd, strict=False)
+        if len(missing_keys) > 10:
+            print("Missing primary model keys:", missing_keys[:10], "...")
+        else:
+            print("Missing primary model keys:", missing_keys)
+        if len(unexp_keys) > 10:
+            print("Unexpected primary model keys:", unexp_keys[:10], "...")
+        else:
+            print("Unexpected primary model keys:", unexp_keys)
         if wait_for_AT:
             logging.warning("Reiniting EMA...")
             model_module.reinit_ema(
@@ -1605,6 +1612,10 @@ if __name__ == "__main__":
                         type=bool_type,
                         default=False,
                         help="Whether or not to load a Frankenstein model.")
+    parser.add_argument("--skip_module_module_weight_prefix", 
+                        type=bool_type,
+                        default=False,
+                        help="Whether or not to skip loading module_module weights.")
 
     parser = pl.Trainer.add_argparse_args(parser)
 
