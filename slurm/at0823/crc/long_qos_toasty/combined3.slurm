@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=combined-better3A
+#SBATCH --job-name=combined-AT
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output="out/%A_%6a.out"
@@ -10,8 +10,8 @@
 #SBATCH --partition=a100_multi
 #SBATCH --nodes=2
 #SBATCH --cluster=gpu
-#SBATCH --time=6-00:00:00
-#SBATCH --qos=long
+#SBATCH --time=3-00:00:00
+#SBATCH --qos=normal
 # --exclude=gpu-n28,gpu-n32,gpu-n29,gpu-n41
 
 
@@ -19,25 +19,13 @@
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="toastyC0_repeat_noconvB-FullAF2"
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel-RESUME2"
 # EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
 # EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "This will be called ${EXPERIMENT_ID}."
 echo "Trying to finetune the angle transformer model."
-AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toastyC0_repeat.ckpt"
-AT_LAYERS=42
-AT_HEADS=1
-AT_HIDDEN=64
-AT_DFF=1024
-AT_DROPOUT=0.018609913167811645
-AT_ACTIVATION=gelu
-AT_CONV_ENC=False
-USE_AT=True
-AIM_TAG="aim3A"
-FORCE_LOAD_AT_WEIGHTS=True
-
 
 ############################
 ##       Environment      ##
@@ -65,7 +53,8 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
+CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel-RESUME/checkpoints/68-4277.ckpt
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toasty_sweep_113.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
 # CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
@@ -76,10 +65,12 @@ else
     RESUME_MODEL_WEIGHTS_ONLY=False
 fi
 
+RESUME_MODEL_WEIGHTS_ONLY=False
+
 export CUDA_LAUNCH_BLOCKING=1
 
 
-srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
+srun -N 1 -n 1 -c 18  python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
@@ -116,10 +107,10 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --scheduler_max_lr=2e-5 \
     --use_scn_pdb_names=True \
     --use_scn_pdb_names_val=True \
-    --use_openmm=False \
+    --use_openmm=True \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="0913_AT,0913_RN,0924_extend_good_runs,${AIM_TAG}" \
+    --wandb_tags="0913_AT" \
     --wandb_note="Trying to finetune the AT with the whole AF2." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
@@ -128,39 +119,27 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
-    --use_angle_transformer=${USE_AT} \
-    --train_only_angle_predictor=True \
-    --angle_transformer_layers=${AT_LAYERS} \
-    --angle_transformer_heads=${AT_HEADS} \
-    --angle_transformer_hidden=${AT_HIDDEN} \
-    --angle_transformer_dff=${AT_DFF} \
-    --angle_transformer_dropout=${AT_DROPOUT} \
-    --angle_transformer_activation=${AT_ACTIVATION} \
-    --chi_weight=0.5 \
+    --use_angle_transformer=True \
+    --train_only_angle_predictor=False \
+    --angle_transformer_layers=42 \
+    --angle_transformer_heads=1 \
+    --angle_transformer_hidden=64 \
+    --angle_transformer_dff=1024 \
+    --angle_transformer_dropout=0.018609913167811645 \
+    --angle_transformer_activation=gelu \
+    --chi_weight=1 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
-    --angle_transformer_checkpoint=${AT_CHECKPOINT} \
     --add_relu_to_omm_loss=True \
-    --angle_transformer_conv_encoder=${AT_CONV_ENC} \
-    --force_load_angle_transformer_weights=${FORCE_LOAD_AT_WEIGHTS}  &
+    --angle_transformer_conv_encoder=True &
 
 ############################
 ##       Description      ##
 ############################
-EXPERIMENT_ID="resnet_baseline_not_AF2_toastyRN1-FullAF2"
-AT_LAYERS=2
-AT_HEADS=1
-AT_HIDDEN=128
-AT_DFF=512
-AT_DROPOUT=0.09362803755294724
-AT_ACTIVATION=gelu
-AT_CONV_ENC=False
-USE_AT=False
-AIM_TAG="aim3A"
-
-FORCE_LOAD_AT_WEIGHTS=True
-
-
+EXPERIMENT_ID="angletransformer-scnmin-00-AT-OMM-toasty-long-a100-wholemodel-RESUME2"
+# EXPERIMENT_ID="angletransformer-scnmin-00-AT-noOMM"
+# EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-noOMM"
+# EXPERIMENT_ID="angletransformer-scnmin-00-ResNet-OMM"
 echo "Running job ${SLURM_JOB_ID} with ${SLURM_NTASKS} workers on node ${SLURMD_NODENAME}."
 echo "This will be called ${EXPERIMENT_ID}."
 echo "Trying to finetune the angle transformer model."
@@ -184,8 +163,8 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT=openfold/resources/openfold_params/finetuning_5.pt
-AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/restnet_baselinet_not_AF2.ckpt"
+CHECKPOINT=/ihome/dkoes/jok120/openfold/out/experiments/angletransformer-scnmin-00-AT-noOMM-toasty-long-a100-wholemodel/checkpoints/123-7687.ckpt
+AT_CHECKPOINT="/ihome/dkoes/jok120/chkpts_angletransformer/toasty_sweep_113.ckpt"
 # PREV_EXPERIMENT_OUTDIR="out/experiments/angletransformer-unmin-noomm-09d"
 # CHECKPOINT=$(ls -td ${PREV_EXPERIMENT_OUTDIR}/finetune-openfold-02/*/checkpoints/* | head -n 1)
 echo "Uses checkpoint $CHECKPOINT"
@@ -196,11 +175,12 @@ else
     RESUME_MODEL_WEIGHTS_ONLY=False
 fi
 
+RESUME_MODEL_WEIGHTS_ONLY=False
+
 export CUDA_LAUNCH_BLOCKING=1
-export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:512"
 
 
-srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
+srun -N 1 -n 1 -c 18  python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMENTS_DIR} ${TEMPLATE_STRUCTURES_DIR} ${OUTDIR} 2021-10-10 \
     --train_chain_data_cache_path=${TRAIN_CACHE} \
     --template_release_dates_cache_path=${TEMPLATE_CACHE} \
     --val_data_dir=${VALIDATION_STRUCTURES_DIR} \
@@ -240,7 +220,7 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --use_openmm=False \
     --use_alphafold_sampling=True \
     --experiment=${EXPERIMENT_ID}  \
-    --wandb_tags="0913_AT,0913_RN,0924_extend_good_runs,${AIM_TAG}" \
+    --wandb_tags="0913_AT" \
     --wandb_note="Trying to finetune the AT with the whole AF2." \
     --log_to_csv=False \
     --openmm_squashed_loss=False \
@@ -249,21 +229,20 @@ srun -N 1 -n 1 -c 18 python train_openfold.py ${TRAIN_STRUCTURES_DIR} ${ALIGNMEN
     --auto_slurm_resubmit=False \
     --use_openmm_warmup=True \
     --openmm_warmup_steps=1000 \
-    --use_angle_transformer=${USE_AT} \
-    --train_only_angle_predictor=True \
-    --angle_transformer_layers=${AT_LAYERS} \
-    --angle_transformer_heads=${AT_HEADS} \
-    --angle_transformer_hidden=${AT_HIDDEN} \
-    --angle_transformer_dff=${AT_DFF} \
-    --angle_transformer_dropout=${AT_DROPOUT} \
-    --angle_transformer_activation=${AT_ACTIVATION} \
-    --chi_weight=0.5 \
+    --use_angle_transformer=True \
+    --train_only_angle_predictor=False \
+    --angle_transformer_layers=42 \
+    --angle_transformer_heads=1 \
+    --angle_transformer_hidden=64 \
+    --angle_transformer_dff=1024 \
+    --angle_transformer_dropout=0.018609913167811645 \
+    --angle_transformer_activation=gelu \
+    --chi_weight=1 \
     --angle_loss_only=False \
     --angle_like_loss_only=True \
-    --angle_transformer_checkpoint=${AT_CHECKPOINT} \
-    --angle_transformer_conv_encoder=${AT_CONV_ENC} \
-    --force_load_angle_transformer_weights=${FORCE_LOAD_AT_WEIGHTS} \
-    --add_relu_to_omm_loss=True  &
+    --add_relu_to_omm_loss=True \
+    --angle_transformer_conv_encoder=True &
+
 
 wait
 
