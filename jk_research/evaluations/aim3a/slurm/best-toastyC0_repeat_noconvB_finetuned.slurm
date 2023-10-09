@@ -13,7 +13,7 @@
 ###########################
 ## UPDATE ME!! UPDATE ME!##
 ###########################
-EXPERIMENT_ID="eval_toastyC0_repeat_noconvB_finetuned"
+EXPERIMENT_ID="eval_toastyC0_repeat_noconvB_finetuned_2"
 AT_CHECKPOINT="/net/pulsar/home/koes/jok120/angletransformer/out/experiments/angletransformer_solo01/m003au65/checkpoints/best.ckpt"
 AT_LAYERS=42
 AT_HEADS=1
@@ -59,7 +59,7 @@ TEMPLATE_CACHE=data/caches/mmcif_cache_rodasnapshot.json
 VALIDATION_STRUCTURES_DIR=data/validation/cameo/20220116/minimized/data_dir
 VALIDATION_ALIGNMENTS_DIR=data/validation/cameo/20220116/minimized/alignments
 
-CHECKPOINT="/net/pulsar/home/koes/jok120/openfold/out/experiments/toastyC0_repeat_noconvB-FullAF2/checkpoints/70-4401.ckpt"
+CHECKPOINT="/net/pulsar/home/koes/jok120/openfold/out/experiments/toastyC0_repeat_noconvB-FullAF2/checkpoints/157-9795.ckpt"
 
 echo "Uses checkpoint $CHECKPOINT"
 

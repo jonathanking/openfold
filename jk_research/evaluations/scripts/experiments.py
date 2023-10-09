@@ -12,7 +12,7 @@ class Experiment:
                  wandb_id,
                  location,
                  notes,
-                 slurm_template="jk_research/evaluations/scripts/subjob_skeleton.slurm"):
+                 slurm_template):
         assert "-" not in exp_name, "Experiment name cannot contain dashes."
 
         self.exp_name = exp_name
@@ -141,8 +141,8 @@ class Experiment:
 
 
 class TrainingExperiment(Experiment):
-    def __init__(self, exp_name, wandb_id, location, notes):
-        super().__init__(exp_name, wandb_id, location, notes)
+    def __init__(self, exp_name, wandb_id, location, notes, slurm_template="jk_research/evaluations/scripts/subjob_skeleton.slurm"):
+        super().__init__(exp_name, wandb_id, location, notes, slurm_template)
         self._set_defaults()
 
     def _set_defaults(self):
@@ -154,8 +154,8 @@ class TrainingExperiment(Experiment):
 
 
 class EvaluationExperiment(Experiment):
-    def __init__(self, exp_name, wandb_id, location, notes, exp_suffix, checkpoint_path):
-        super().__init__(exp_name, wandb_id, location, notes)
+    def __init__(self, exp_name, wandb_id, location, notes, exp_suffix, checkpoint_path, slurm_template="jk_research/evaluations/scripts/subjob_skeleton.slurm"):
+        super().__init__(exp_name, wandb_id, location, notes, slurm_template)
         self.exp_suffix = exp_suffix
         self.checkpoint_path = checkpoint_path
         self._set_defaults()

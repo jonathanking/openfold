@@ -1,0 +1,8 @@
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-noOMM-toasty/pdbs/test/pred' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-noOMM-toasty/pdbs/val/pred' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-OMM-toasty/pdbs/test/pred' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-OMM-toasty/pdbs/val/pred' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-OMM-toasty/pdbs/test/true' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-OMM-toasty/pdbs/val/true' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-noOMM-toasty/pdbs/test/true' --device='cpu' --run_molprobity
+python jk_research/utils/relax_from_pdb.py --pdb_directory='out/evaluations/aim3C/eval_AT-frankenstein-noOMM-toasty/pdbs/val/true' --device='cpu' --run_molprobity

@@ -116,7 +116,7 @@ def create_eval_job_df(exp_dir, eval_jobs, location):
     return df
 
 
-def create_slurm_eval_experiments(df):
+def create_slurm_eval_experiments(df, skeleton):
     """Return a list of EvaluataionExperiment objects."""
     # Create EvaluationExperiment objects from the dataframe
     eval_exps = []
@@ -131,6 +131,7 @@ def create_slurm_eval_experiments(df):
             notes=f"Evaluating {row['exp_name']} at step {step}.",
             exp_suffix=row["exp_suffix"],
             checkpoint_path=row["checkpoint_path"],
+            slurm_template=skeleton,
         )
         eval_exps.append(eval_exp)
 
@@ -140,8 +141,13 @@ def create_slurm_eval_experiments(df):
 def main(args):
     df = create_eval_job_df(args.exp_directory, args.eval_job_csv, args.location)
 
+    if args.eval_skeleton_type == "standard":
+        skeleton = "jk_research/evaluations/scripts/subjob_skeleton.slurm"
+    elif args.eval_skeleton_type == "AT":
+        skeleton = "jk_research/evaluations/scripts/subjob_skeleton_AT.slurm"
+
     # Get slurm scripts based on the dataframe
-    slurm_eval_experiments = create_slurm_eval_experiments(df)
+    slurm_eval_experiments = create_slurm_eval_experiments(df, skeleton)
 
     # Write slurm scripts to file in jk_research/evaluations/{6digitdate}/subjobs
     # First create the directory if it doesn't exist
@@ -152,9 +158,8 @@ def main(args):
 
     for i, slurm_eval_exp in enumerate(slurm_eval_experiments):
         slurm_eval_exp.write_slurm_script(f"eval{i}", slurm_dir)
-        slurm_eval_exp.run_slurm_script()
-
-    # Run slurm scripts
+        if not args.dont_run:
+            slurm_eval_exp.run_slurm_script()
 
     print('Done!')
 
@@ -173,6 +178,9 @@ if __name__ == '__main__':
                         type=str,
                         help='Location of the experiment.',
                         default="g019")
+    parser.add_argument("--eval_skeleton_type", type=str, choices=["standard", "AT"], default="standard",
+                        help="The type of slurm job skeleton to use for evaluation.")
+    parser.add_argument("--dont_run", action="store_true", help="Don't run the slurm scripts."")
     args = parser.parse_args()
 
     main(args)
