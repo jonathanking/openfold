@@ -675,8 +675,15 @@ def main(args):
         if args.force_skip_angle_transformer_weights or (args.angle_transformer_checkpoint is not None and (args.use_angle_transformer or args.force_load_angle_transformer_weights)):
             logging.warning("Skipping intitial weights of AT...")
             sd = {k:v for k,v in sd.items() if not k.startswith("model.structure_module.angle_resnet")} 
-        model_module.load_state_dict(sd, strict=False)
-        if not args.use_angle_transformer or (args.use_angle_transformer and args.angle_transformer_checkpoint is not None):
+        if (args.use_angle_transformer and args.angle_transformer_checkpoint is None) or args.force_module_model_parameter_switch:
+            sd = {k.replace("model.module.", ""): v for k, v in sd.items()}
+            logging.warning("Doing the ol' switcheroo to the state-dict to get the saved weights to load correctly when an AngleTransformer is saved in the checkpoint...")
+        # print(list(sd.keys()))
+        wait_for_AT = (not args.use_angle_transformer or (args.use_angle_transformer and args.angle_transformer_checkpoint is not None) 
+            or (args.use_angle_transformer and "pytorch_model.bin" in args.resume_from_ckpt))
+        model_module.load_state_dict(sd, strict=True)#not wait_for_AT)
+        if wait_for_AT:
+            logging.warning("Reiniting EMA...")
             model_module.reinit_ema(
             )  # NOTE-JK We do this so that the EMA loads the correct weights
         logging.warning("Successfully loaded model weights...")
