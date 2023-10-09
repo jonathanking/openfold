@@ -8,3 +8,11 @@ dist
 data
 openfold/resources/
 tests/test_data/
+
+# Research files ignore
+jk_research/
+lib/conda/
+checkpoints/
+lightning_logs/
+slurm/
+out
