@@ -1,8 +1,89 @@
+# OpenMM-Loss Enabled OpenFold
+This is a fork of the OpenFold repo which allows training and finetuning with **OpenMM-Loss**, an energy-based loss function implemented in the paper [Interpreting Molecular Dynamics Forces as Deep Learning Gradients Improves Quality Of Predicted Protein Structures](https://doi.org/10.1101/2023.10.03.560775). Our research has shown that finetuning OpenFold using the OpenMM-Loss function may improve the quality of predicted protein structures (fewer clashes, lower MolProbity scores) while maintaining similar accuracy.
+
+![openmm loss summary ](imgs/openmm_loss_summary.png)
+
+**NOTE: Inference with our finetuned models does not require this fork! Simply use our [checkpoints](https://pitt.sharepoint.com/:f:/s/koes-group/Eux3FmPr_r9JsPO-k2NQMJIBV5MhX3V5zqEVpRxz3Z5uoQ?e=WhNZap) with OpenFold's inference procedure** (use `config_preset=initial_training`).
+
+If you wish to use this work for more advanced purposes, such as finetuning OpenFold with OpenMM-Loss, please follow the instructions below.
+
+
+## Make predictions with OpenFold Finetuned with OpenMM-Loss
+To perform inference using our version of OpenFold that has been finetuned with OpenMM-Loss,
+simply follow the instructions below for `run_pretrained_openfold.py`, substituting one of our checkpoints
+for the OpenFold checkpoint, and specifying `initial_training` as the config_preset. For example:
+
+```bash
+python run_pretrained_openfold.py \
+    data/validation/cameo/20220116/fastas/ \
+    data/validation/cameo/20220116/data_dir/ \
+    --output_dir ./example_predict/ \
+    --model_device "cuda:0" \
+    --config_preset "initial_training" \
+    --openfold_checkpoint_path openmm_loss_paper/model_0.pt \
+```
+
+## Finetune OpenFold with OpenMM-Loss
+To finetune OpenFold with OpenMM-Loss as in our paper:
+
+1. Download this fork. 
+2. Set up your environment.
+    - First, install the OpenFold virtual environment by following their instructions (if not previously installed).
+    - Second, you'll need to install two additional dependencies:
+        - Update `openmm` to version 8 or later.
+        - Install the _research branch_ of our main repository, [sidechainnet](https://github.com/jonathanking/sidechainnet), which provides the machinery for interfacing between OpenMM and OpenFold. It also contains data and tools for machine learning with all-atom protein structure data.
+            - `!pip install git+https://github.com/jonathanking/sidechainnet/@dkoes-research_openmm`
+
+You are now ready to finetune or train OpenFold with OpenMM-Loss. Follow the instructions described
+below by the original authors.
+
+However, using this fork provides access to several new features/program arguments. In
+addition to the full set of configuration options now available in `config.py`'s 
+loss/openmm options, the following arguments are now available in `train_openfold.py`:
+
+```
+  --use_openmm USE_OPENMM
+                        Whether to use OpenMM loss. (True or False)
+  --openmm_weight OPENMM_WEIGHT
+                        Weight applied to OpenMM loss.
+  --add_struct_metrics ADD_STRUCT_METRICS
+                        Whether to add additional structure metrics to wandb including RMSD, GDC, DRMSD, LDDT, etc. (True or False)
+  --write_pdbs_every_n_steps WRITE_PDBS_EVERY_N_STEPS
+                        Frequency with which to write pdbs of the predicted structures.
+  --use_openmm_warmup USE_OPENMM_WARMUP
+                        Whether to use OpenMM LR warmup. Scales the value of OpenMM linearly from 1e-4 to 1 over 1000 steps. (True or False)
+  --openmm_warmup_steps OPENMM_WARMUP_STEPS
+                        Number of steps to warmup OpenMM.
+  --log_other_metrics_on_step LOG_OTHER_METRICS_ON_STEP
+                        Whether to log auxilliary metrics (e.g., structure metrics) on every step. (True or False)
+```
+
+
+## OpenMM-Loss Citation
+If you find our work useful, please cite our preprint in addition to OpenFold's paper:
+
+```bibtex
+@article {King2023.10.03.560775,
+	author = {Jonathan Edward King and David Ryan Koes},
+	title = {Interpreting Molecular Dynamics Forces as Deep Learning Gradients Improves Quality Of Predicted Protein Structures},
+	elocation-id = {2023.10.03.560775},
+	year = {2023},
+	doi = {10.1101/2023.10.03.560775},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2023/10/05/2023.10.03.560775},
+	eprint = {https://www.biorxiv.org/content/early/2023/10/05/2023.10.03.560775.full.pdf},
+	journal = {bioRxiv}
+}
+```
+
+
+The original OpenFold README is reproduced in full below.
+
 ![header ](imgs/of_banner.png)
 _Figure: Comparison of OpenFold and AlphaFold2 predictions to the experimental structure of PDB 7KDX, chain B._
 
 
-# OpenFold
+# OpenFold (From the original README)
 
 A faithful but trainable PyTorch reproduction of DeepMind's 
 [AlphaFold 2](https://github.com/deepmind/alphafold).

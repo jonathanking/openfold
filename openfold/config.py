@@ -59,6 +59,14 @@ def model_config(
     if name == "initial_training":
         # AF2 Suppl. Table 4, "initial training" setting
         pass
+    elif name == "finetuning_sidechainnet":
+        # MOD-JK These settings are modified to finetune on SidechainNet/OpenMM Loss
+        # NOTE-JK Using the finetuning settings are nearly impossible on a 12 GB card,
+        # so we revert to initial_training settings, but keep the finetuning loss weights
+        c.loss.violation.weight = 1.
+        c.loss.experimentally_resolved.weight = 0.01
+        # c.model.heads.tm.enabled = True
+        # c.loss.tm.weight = 0.1
     elif name == "finetuning":
         # AF2 Suppl. Table 4, "finetuning" setting
         c.data.train.crop_size = 384
@@ -610,6 +618,20 @@ config = mlc.ConfigDict(
                 "enabled": tm_enabled,
             },
             "eps": eps,
+            "openmm": {
+                "use_openmm": False, 
+                "weight": 0.01,
+                "add_struct_metrics": True,
+                "write_pdbs_every_n_steps": 10,
+                "pdb_dir": "./pdbs",
+                "scale_by_length": False,
+                "force_clipping_val": 1e6,
+                "modified_sigmoid": True,
+                "modified_sigmoid_params": (5,1000000,300000,5),
+                "use_openmm_warmup": False,
+                "openmm_warmup_steps": 1000,
+                "add_relu": True,
+            },
         },
         "ema": {"decay": 0.999},
     }

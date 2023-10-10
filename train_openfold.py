@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import argparse
 import logging
 import os
@@ -47,13 +48,20 @@ from scripts.zero_to_fp32 import (
 
 from openfold.utils.logger import PerformanceLoggingCallback
 
+import sidechainnet.examples.losses as scn_losses
+from sidechainnet.research.openfold.openfold_loss import OpenMMLR
+
 
 class OpenFoldWrapper(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, config, use_wandb=False, log_other_metrics_on_step=False):
         super(OpenFoldWrapper, self).__init__()
         self.config = config
+        if config.loss.openmm.use_openmm_warmup:
+            self.openmm_scheduler = OpenMMLR(steps=config.loss.openmm.openmm_warmup_steps)
+        else:
+            self.openmm_scheduler = None
         self.model = AlphaFold(config)
-        self.loss = AlphaFoldLoss(config.loss)
+        self.loss = AlphaFoldLoss(config.loss, self.openmm_scheduler, use_wandb=use_wandb)
         self.ema = ExponentialMovingAverage(
             model=self.model, decay=config.ema.decay
         )
@@ -61,11 +69,14 @@ class OpenFoldWrapper(pl.LightningModule):
         self.cached_weights = None
         self.last_lr_step = -1
 
+        self.phase = None
+        self.log_other_metrics_on_step = log_other_metrics_on_step
+
     def forward(self, batch):
         return self.model(batch)
 
     def _log(self, loss_breakdown, batch, outputs, train=True):
-        phase = "train" if train else "val"
+        phase = self.phase
         for loss_name, indiv_loss in loss_breakdown.items():
             self.log(
                 f"{phase}/{loss_name}", 
@@ -84,17 +95,24 @@ class OpenFoldWrapper(pl.LightningModule):
             other_metrics = self._compute_validation_metrics(
                 batch, 
                 outputs,
-                superimposition_metrics=(not train)
+                superimposition_metrics=(
+                    not train or self.config.loss.openmm.add_struct_metrics)
             )
 
         for k,v in other_metrics.items():
+            try:
+                mean = torch.mean(v)
+            except TypeError:
+                # Structure metrics can be numpy arrays
+                mean = np.mean(v)
             self.log(
                 f"{phase}/{k}",
-                torch.mean(v),
-                on_step=False, on_epoch=True, logger=True
+                mean,
+                on_step=self.log_other_metrics_on_step, on_epoch=True, logger=True
             )
 
     def training_step(self, batch, batch_idx):
+        self.phase = self.loss.mode = "train"
         if(self.ema.device != batch["aatype"].device):
             self.ema.to(batch["aatype"].device)
 
@@ -112,12 +130,17 @@ class OpenFoldWrapper(pl.LightningModule):
         # Log it
         self._log(loss_breakdown, batch, outputs)
 
+        # Step OpenMM-Loss scheduler if in use
+        if self.openmm_scheduler is not None:
+            self.openmm_scheduler.step(self.global_step)
+
         return loss
 
     def on_before_zero_grad(self, *args, **kwargs):
         self.ema.update(self.model)
 
     def validation_step(self, batch, batch_idx):
+        self.loss.mode = 'val' if self.phase != 'test' else 'test'
         # At the start of validation, load the EMA weights
         if(self.cached_weights is None):
             # model.state_dict() contains references to model weights rather
@@ -138,7 +161,8 @@ class OpenFoldWrapper(pl.LightningModule):
         )
 
         self._log(loss_breakdown, batch, outputs, train=False)
-        
+        return loss_breakdown
+
     def validation_epoch_end(self, _):
         # Restore the model weights to normal
         self.model.load_state_dict(self.cached_weights)
@@ -182,20 +206,75 @@ class OpenFoldWrapper(pl.LightningModule):
         metrics["drmsd_ca"] = drmsd_ca_score
     
         if(superimposition_metrics):
-            superimposed_pred, alignment_rmsd = superimpose(
-                gt_coords_masked_ca, pred_coords_masked_ca, all_atom_mask_ca,
-            )
-            gdt_ts_score = gdt_ts(
-                superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
-            )
-            gdt_ha_score = gdt_ha(
-                superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
-            )
+            try:
+                superimposed_pred, alignment_rmsd = superimpose(
+                    gt_coords_masked_ca, pred_coords_masked_ca, all_atom_mask_ca,
+                )
+                gdt_ts_score = gdt_ts(
+                    superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
+                )
+                gdt_ha_score = gdt_ha(
+                    superimposed_pred, gt_coords_masked_ca, all_atom_mask_ca
+                )
 
-            metrics["alignment_rmsd"] = alignment_rmsd
-            metrics["gdt_ts"] = gdt_ts_score
-            metrics["gdt_ha"] = gdt_ha_score
-    
+                metrics["rmsd_ca"] = alignment_rmsd
+                metrics["gdtts_ca"] = gdt_ts_score
+                metrics["gdtha_ca"] = gdt_ha_score
+
+                if gt_coords.shape[0] != 1:
+                    metrics["rmsd_ca"] = torch.mean(alignment_rmsd)
+
+                # Record various structure metrics, only supports batch size = 1
+                if gt_coords.shape[0] == 1:
+                    # Create our superimposed and de-padded all-atom variables for analysis
+                    flat_gt = gt_coords_masked.reshape(gt_coords.shape[0], -1, 3)
+                    flat_pred = pred_coords_masked.reshape(pred_coords.shape[0], -1, 3)
+                    flat_all_atom_mask = all_atom_mask.reshape(all_atom_mask.shape[0], -1)
+
+                    flat_gt_unpadded = flat_gt[flat_all_atom_mask.bool()]
+                    flat_pred_unpadded = flat_pred[flat_all_atom_mask.bool()]
+                    flat_gt_unpadded_np = flat_gt_unpadded.cpu().numpy()
+
+                    # >>> All-atom RMSD
+                    flat_superimposed_pred_aa, rmsd_all = superimpose(
+                        flat_gt, flat_pred, flat_all_atom_mask)
+                    metrics["rmsd_aa"] = rmsd_all
+                    flat_superimposed_pred_aa_unpadded_np = flat_superimposed_pred_aa[
+                        flat_all_atom_mask.bool()].cpu().numpy()
+
+                    # >>> Global Metrics (GDC_all, TM score)
+                    gdcall_aa = scn_losses.gdc_all(flat_gt_unpadded_np,
+                                                flat_superimposed_pred_aa_unpadded_np,
+                                                skip_alignment=True,
+                                                as_percent=False)
+                    tmscore_aa = scn_losses.tm_score(
+                        flat_gt_unpadded_np,
+                        flat_superimposed_pred_aa_unpadded_np,
+                        skip_alignment=True)
+                    tmscore_ca = scn_losses.tm_score(
+                        gt_coords_masked_ca[all_atom_mask_ca.bool()].cpu().numpy(),
+                        superimposed_pred[all_atom_mask_ca.bool()].cpu().numpy(),
+                        skip_alignment=True)
+
+                    # >>> Local Metrics (DRMSD, LDDT, no alignment required)
+                    # Note: Current implementation of lddt all-atom in OpenFold does not
+                    # exclude atoms within the same residue. Use SidechainNet impl. instead.
+                    drmsd_aa = scn_losses.drmsd(flat_gt_unpadded, flat_pred_unpadded)
+                    lddt_aa = scn_losses.lddt_all(
+                        flat_gt.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                        flat_pred.reshape(-1, 3) * all_atom_mask.reshape(-1, 1),
+                        atom_mask=all_atom_mask.reshape(-1).bool(),
+                        residue_shape=gt_coords.shape[-1],
+                        cutoff=15)
+
+                    metrics["gdcall_aa"] = gdcall_aa
+                    metrics["tmscore_aa"] = tmscore_aa
+                    metrics["tmscore_ca"] = tmscore_ca
+                    metrics["drmsd_aa"] = drmsd_aa
+                    metrics["lddt_aa"] = lddt_aa
+            except ZeroDivisionError:
+                # An alignment error occurred, so we skip superimposition metrics
+                pass
         return metrics
 
     def configure_optimizers(self, 
@@ -243,6 +322,13 @@ class OpenFoldWrapper(pl.LightningModule):
 
     def resume_last_lr_step(self, lr_step):
         self.last_lr_step = lr_step
+        # Load the openmm scheduler step, if used
+        if self.openmm_scheduler is None:
+            return
+        self.openmm_scheduler.cur_step = lr_step
+        cur_openmm = self.openmm_scheduler.get_lr()
+        logging.warning(f"Resuming from lr step: {lr_step} with current openmm weight"
+                        f" = {cur_openmm}".format(lr_step))
 
     def load_from_jax(self, jax_path):
         model_basename = os.path.splitext(
@@ -256,6 +342,19 @@ class OpenFoldWrapper(pl.LightningModule):
         )
 
 
+def update_openmm_config(config, args):
+    """Update training config in-place with OpenMM-Loss training arguments."""
+    config.loss.openmm.use_openmm = args.use_openmm
+    config.loss.openmm.add_struct_metrics = args.add_struct_metrics
+    config.loss.openmm.weight = args.openmm_weight
+    config.loss.openmm.write_pdbs_every_n_steps = args.write_pdbs_every_n_steps
+    config.loss.openmm.pdb_dir = os.path.join(args.output_dir, "pdbs")
+    if args.use_openmm_warmup:
+        config.loss.openmm.use_openmm_warmup = True
+    if args.openmm_warmup_steps is not None:
+        config.loss.openmm.openmm_warmup_steps = args.openmm_warmup_steps
+
+
 def main(args):
     if(args.seed is not None):
         seed_everything(args.seed) 
@@ -265,17 +364,32 @@ def main(args):
         train=True, 
         low_prec=(str(args.precision) == "16")
     ) 
-    
-    model_module = OpenFoldWrapper(config)
-    if(args.resume_from_ckpt):
+
+    # Update config with user-specified arguments for OpenMM-Loss
+    update_openmm_config(config, args)
+
+    model_module = OpenFoldWrapper(config, args.wandb, args.log_other_metrics_on_step)
+    if(args.resume_from_ckpt and "finetuning_" in args.resume_from_ckpt):
+        logging.info("Loading weights from OpenFold checkpoint...")
+        sd = torch.load(args.resume_from_ckpt)
+        model_module.resume_last_lr_step(0)
+        logging.info("Successfully loaded last lr step...")
+        logging.info("Adding model. prefix to OpenFold state dict...")
+        sd = {"model." + k: v for k, v in sd.items()}
+        model_module.load_state_dict(sd)
+        logging.info("Successfully loaded model weights...")
+    elif(args.resume_from_ckpt and not args.resume_model_weights_only):
         if(os.path.isdir(args.resume_from_ckpt)):  
             last_global_step = get_global_step_from_zero_checkpoint(args.resume_from_ckpt)
         else:
             sd = torch.load(args.resume_from_ckpt)
-            last_global_step = int(sd['global_step'])
+            try:
+                last_global_step = int(sd['global_step'])
+            except KeyError:
+                last_global_step = 0
         model_module.resume_last_lr_step(last_global_step)
         logging.info("Successfully loaded last lr step...")
-    if(args.resume_from_ckpt and args.resume_model_weights_only):
+    elif(args.resume_from_ckpt and args.resume_model_weights_only):
         if(os.path.isdir(args.resume_from_ckpt)):
             sd = get_fp32_state_dict_from_zero_checkpoint(args.resume_from_ckpt)
         else:
@@ -343,7 +457,10 @@ def main(args):
             project=args.wandb_project,
             **{"entity": args.wandb_entity}
         )
+        # Save arguments to wandb config
+        wdb_logger.experiment.config.update(vars(args), allow_val_change=True)
         loggers.append(wdb_logger)
+        logging.info("WandB experiment dir:", wdb_logger.experiment.dir)
 
     if(args.deepspeed_config_path is not None):
         strategy = DeepSpeedPlugin(
@@ -563,6 +680,36 @@ if __name__ == "__main__":
         "--distillation_alignment_index_path", type=str, default=None,
         help="Distillation alignment index. See the README for instructions."
     )
+    parser.add_argument(
+        "--log_other_metrics_on_step", type=bool_type, default=False,
+        help="Whether to log auxilliary metrics on every step."
+    )
+
+    # Arguments for OpenMM-Loss Training
+    omm_loss = parser.add_argument_group("OpenMM-Loss Training")
+    omm_loss.add_argument(
+        "--use_openmm", type=bool_type, default=False, help="Whether to use OpenMM loss."
+    )
+    omm_loss.add_argument(
+        "--openmm_weight", type=float, default=0.01, help="Weight applied to OpenMM loss."
+    )
+    omm_loss.add_argument(
+        "--add_struct_metrics", type=bool_type, default=True, help="Whether to add "
+        "additional structure metrics to wandb including RMSD, GDC, DRMSD, LDDT, etc."
+    )
+    omm_loss.add_argument(
+        "--write_pdbs_every_n_steps", type=int, default=-1, help="Frequency with which to"
+        " write pdbs of the predicted structures.")
+    omm_loss.add_argument(
+        "--use_openmm_warmup", type=bool_type, default=False,
+        help="Whether to use OpenMM LR warmup. Scales the value of OpenMM"
+        " linearly from 1e-4 to 1 over 1000 steps..")
+    omm_loss.add_argument(
+        "--openmm_warmup_steps", type=int, default=1000,
+        help="Number of steps to warmup OpenMM."
+    )
+    
+
     parser = pl.Trainer.add_argparse_args(parser)
    
     # Disable the initial validation pass

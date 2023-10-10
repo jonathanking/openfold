@@ -15,6 +15,7 @@
 
 from functools import partial
 import logging
+import os
 import ml_collections
 import numpy as np
 import torch
@@ -32,6 +33,9 @@ from openfold.utils.tensor_utils import (
     permute_final_dims,
     batched_gather,
 )
+
+from sidechainnet.research.openfold.openfold_loss import openmm_loss
+import wandb
 
 
 def softmax_cross_entropy(logits, labels):
@@ -310,9 +314,9 @@ def supervised_chi_loss(
             seq_mask:
                 [*, N] sequence mask
             chi_mask:
-                [*, N, 7] angle mask
+                [*, N, 4] angle mask
             chi_angles_sin_cos:
-                [*, N, 7, 2] ground truth angles
+                [*, N, 4, 2] ground truth angles
             chi_weight:
                 Weight for the angle component of the loss
             angle_norm_weight:
@@ -1526,9 +1530,13 @@ def masked_msa_loss(logits, true_msa, bert_mask, eps=1e-8, **kwargs):
 
 class AlphaFoldLoss(nn.Module):
     """Aggregation of the various losses described in the supplement"""
-    def __init__(self, config):
+    def __init__(self, config, openmm_scheduler, use_wandb=False, mode='train'):
         super(AlphaFoldLoss, self).__init__()
         self.config = config
+        self.struct_idx = 0
+        self._openmm_scheduler = openmm_scheduler
+        self.mode = mode
+        self.use_wandb = use_wandb
 
     def forward(self, out, batch, _return_breakdown=False):
         if "violation" not in out.keys():
@@ -1578,6 +1586,18 @@ class AlphaFoldLoss(nn.Module):
                 out["violation"],
                 **batch,
             ),
+            # MOD-JK: Added openmm loss
+            "openmm":
+            lambda: openmm_loss(
+                model_output=out,
+                model_input=batch,
+                force_scaling=None,
+                force_clipping_val=self.config.openmm["force_clipping_val"],
+                scale_by_length=self.config.openmm["scale_by_length"],
+                modified_sigmoid=self.config.openmm["modified_sigmoid"],
+                modified_sigmoid_params=self.config.openmm["modified_sigmoid_params"],
+                add_relu=self.config.openmm["add_relu"],
+            ),
         }
 
         if(self.config.tm.enabled):
@@ -1590,7 +1610,27 @@ class AlphaFoldLoss(nn.Module):
         losses = {}
         for loss_name, loss_fn in loss_fns.items():
             weight = self.config[loss_name].weight
-            loss = loss_fn()
+            if loss_name == "openmm":
+                openmm_lr_modifier = (self._openmm_scheduler.get_lr() if
+                                      self._openmm_scheduler is not None else 1.0)
+                weight = weight * openmm_lr_modifier
+                try:
+                    loss, raw_energy = self._compute_openmm_loss_and_write_pdbs(loss_fn)
+                    losses["openmm_unscaled"] = loss.detach().clone()
+                    losses["openmm_scaled"] = loss.detach().clone() * weight
+                    losses["openmm_raw_energy"] = raw_energy.detach().clone()
+                    loss = loss * weight
+                except Exception as e:
+                    logging.warning(f"OpenMM loss failed with exception: {e}")
+                    loss = torch.tensor(0.)
+                    losses["openmm_unscaled"] = torch.nan
+                    losses["openmm_scaled"] = torch.nan
+                    losses["openmm_raw_energy"] = torch.nan
+                # Overwrite loss if we're not using openmm, but still log values
+                if not self.config.openmm.use_openmm:
+                    loss = torch.tensor(0.)
+            else:
+                loss = loss_fn()
             if(torch.isnan(loss) or torch.isinf(loss)):
                 #for k,v in batch.items():
                 #    if(torch.any(torch.isnan(v)) or torch.any(torch.isinf(v))):
@@ -1615,3 +1655,52 @@ class AlphaFoldLoss(nn.Module):
             return cum_loss
         
         return cum_loss, losses
+
+    def _compute_openmm_loss_and_write_pdbs(self, loss_fn):
+        """Compute OpenMM loss and write out structures to PDBs if requested.
+
+        Args:
+            loss_fn: A function that computes the OpenMM loss when called.
+
+        Returns:
+            **loss** (torch.Tensor): The OpenMM loss.
+            **raw_energy** (torch.Tensor): The raw energy of the system as computed by
+                OpenMM.
+
+        """
+        current_mode = self.mode
+        os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "true"),
+                    exist_ok=True)
+        os.makedirs(os.path.join(self.config.openmm.pdb_dir, current_mode, "pred"),
+                    exist_ok=True)
+
+        loss, scn_proteins_pred, scn_proteins_true, raw_energy = loss_fn()
+        if (self.config['openmm']['write_pdbs_every_n_steps'] != -1 and
+                self.struct_idx % self.config['openmm']['write_pdbs_every_n_steps'] == 0):
+            if len(scn_proteins_true):
+                # Write out the predicted and true structures, padded left with 4 zeros
+                # to make the filenames sort correctly
+                true_fn = os.path.join(
+                    self.config.openmm.pdb_dir,
+                    f"{current_mode}/true/true_{self.struct_idx:04d}" +
+                    f"_{scn_proteins_true[0].id}.pdb")
+                pred_fn = os.path.join(
+                    self.config.openmm.pdb_dir,
+                    f"{current_mode}/pred/pred_{self.struct_idx:04d}" +
+                    f"_{scn_proteins_true[0].id}.pdb")
+                scn_proteins_true[0].to_pdb(true_fn)
+                scn_proteins_pred[0].to_pdb(pred_fn)
+                self.struct_idx += 1
+                # Log structures to wandb if enabled
+                if self.use_wandb:
+                    wandb.log({"structures/train/true": wandb.Molecule(true_fn)},
+                              commit=False)
+                    wandb.log({"structures/train/pred": wandb.Molecule(pred_fn)},
+                              commit=False)
+                    base_path = os.path.split(self.config.openmm.pdb_dir)[0]
+                    wandb.save(true_fn, base_path=base_path)
+                    wandb.save(pred_fn, base_path=base_path)
+        elif self.config['openmm']['write_pdbs_every_n_steps'] != -1:
+            self.struct_idx += 1
+
+        return loss, raw_energy
