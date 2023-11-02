@@ -58,6 +58,15 @@ loss/openmm options, the following arguments are now available in `train_openfol
                         Whether to log auxilliary metrics (e.g., structure metrics) on every step. (True or False)
 ```
 
+## Applying this framework to other models
+Our framework for training with OpenMM-Loss can be applied to other models. This requires
+the `sidechainnet` package, since  `sidechainnet` implements SCNProtein objects that can interface with OpenMM.
+To apply this method to other models, re-implement the generator function in `sidechainnet/research/openfold/openfold_loss.generate_scnproteins_from_model_reps()` that generates SCNProtein objects from the model input
+and output dictionaries. You'll need to implement this method to map your model's atomic coordinates (or internal coordinates) to SCNProtein's expected format, defined in `sidechainnet.structure.build_info.ATOM_MAP_HEAVY`. SCNProteins will then act as an interface to OpenMM, and can provide gradient-friendly
+energy terms for your model via `SCNProtein.get_openmm_loss()`.
+
+## Note on OpenMM-Loss Paper Data
+Our paper introduced two new datasets (`scnmin` and `scnunmin`). These are available as part of[sidechainnet](https://github.com/jonathanking/sidechainnet). Please see that repository for more information.
 
 ## OpenMM-Loss Citation
 If you find our work useful, please cite our preprint in addition to OpenFold's paper:
