@@ -31,8 +31,8 @@ To finetune OpenFold with OpenMM-Loss as in our paper:
     - First, install the OpenFold virtual environment by following their instructions (if not previously installed).
     - Second, you'll need to install two additional dependencies:
         - Update `openmm` to version 8 or later.
-        - Install the _research branch_ of our main repository, [sidechainnet](https://github.com/jonathanking/sidechainnet), which provides the machinery for interfacing between OpenMM and OpenFold. It also contains data and tools for machine learning with all-atom protein structure data.
-            - `!pip install git+https://github.com/jonathanking/sidechainnet/@dkoes-research_openmm`
+        - Install [sidechainnet](https://github.com/jonathanking/sidechainnet), which provides the machinery for interfacing between OpenMM and OpenFold. It also contains data and tools for machine learning with all-atom protein structure data.
+            - `!pip install sidechainnet`
 
 You are now ready to finetune or train OpenFold with OpenMM-Loss. Follow the instructions described
 below by the original authors.
