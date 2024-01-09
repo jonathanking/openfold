@@ -66,7 +66,7 @@ and output dictionaries. You'll need to implement this method to map your model'
 energy terms for your model via `SCNProtein.get_openmm_loss()`.
 
 ## Note on OpenMM-Loss Paper Data
-Our paper introduced two new datasets (`scnmin` and `scnunmin`). These are available as part of[sidechainnet](https://github.com/jonathanking/sidechainnet). Please see that repository for more information.
+Our paper introduced two new datasets (`scnmin` and `scnunmin`). These are available as part of [sidechainnet](https://github.com/jonathanking/sidechainnet). Please see that repository for more information.
 
 ## OpenMM-Loss Citation
 If you find our work useful, please cite our preprint in addition to OpenFold's paper:
